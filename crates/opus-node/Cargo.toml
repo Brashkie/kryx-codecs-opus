@@ -1,0 +1,22 @@
+[package]
+name = "opus-node"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "napi-rs bindings for @kryxjs/codecs-opus"
+
+[lib]
+name = "opus_node"
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+[dependencies]
+napi = { workspace = true }
+napi-derive = { workspace = true }
+opus-core = { path = "../opus-core" }
+
+[build-dependencies]
+napi-build = { workspace = true }

@@ -1,0 +1,115 @@
+# ═════════════════════════════════════════════════════════════════════════════
+# .npmignore for @kryxjs/codecs-opus
+#
+# Goal: SHIP MINIMAL ARTIFACT to npm.
+# Only include what's required at runtime — no Rust sources, no Zig sources,
+# no libopus C sources, no tests, no docs.
+#
+# The "files" array in package.json is the SOURCE OF TRUTH for what gets
+# published. This .npmignore is the safety net in case "files" is removed
+# or misconfigured.
+#
+# Quick reference of what GETS published (defined by "files" in package.json):
+#   - dist/
+#   - index.js
+#   - index.d.ts
+#   - README.md
+#   - README.es.md
+#   - LICENSE
+#   - NOTICE
+#   - CHANGELOG.md
+#   - <APP_NAME>.<platform>.node  (the native binary, included by napi-rs)
+# ═════════════════════════════════════════════════════════════════════════════
+
+# ─── Rust sources (huge, not needed at runtime) ────────────────────────────
+crates/
+Cargo.toml
+Cargo.lock
+target/
+*.rs.bk
+rust-toolchain.toml
+
+# ─── Zig sources (build-only) ──────────────────────────────────────────────
+zig/
+zig-out/
+.zig-cache/
+
+# ─── libopus C sources (HUGE, ~5 MB; only needed at build time) ────────────
+vendor/
+
+# ─── TypeScript source (compiled output is in dist/) ───────────────────────
+src/
+tsconfig.json
+tsup.config.ts
+
+# ─── Tests ─────────────────────────────────────────────────────────────────
+__tests__/
+vitest.config.ts
+coverage/
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js
+
+# ─── Examples ──────────────────────────────────────────────────────────────
+examples/
+
+# ─── Documentation (only the top-level README ships) ───────────────────────
+docs/
+
+# ─── Build / dev scripts ───────────────────────────────────────────────────
+scripts/
+
+# ─── CI / GitHub config ────────────────────────────────────────────────────
+.github/
+.gitignore
+.gitattributes
+.editorconfig
+
+# ─── Linting / formatting configs ──────────────────────────────────────────
+.eslintrc.json
+.eslintrc.js
+.eslintrc.cjs
+.eslintignore
+.eslintcache
+.prettierrc
+.prettierrc.json
+.prettierrc.js
+.prettierignore
+
+# ─── Editor configs ────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.iml
+*.swp
+*.swo
+
+# ─── OS noise ──────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Logs / temp ───────────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+.scratch/
+*.local.md
+TODO.md
+TODO.local.md
+
+# ─── Lock files (don't ship these to npm) ──────────────────────────────────
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# ─── Per-platform npm sub-package dirs (each one publishes itself separately) ─
+npm/
+
+# ─── Environment / secrets ─────────────────────────────────────────────────
+.env
+.env.*
+
+# ─── Profiling ─────────────────────────────────────────────────────────────
+*.profraw
+*.profdata
+flamegraph.svg

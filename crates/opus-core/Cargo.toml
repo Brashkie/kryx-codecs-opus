@@ -1,0 +1,27 @@
+[package]
+name = "opus-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Opus codec core for @kryxjs/codecs-opus (skeleton — Zig + libopus integration pending)"
+
+[lib]
+name = "opus_core"
+path = "src/lib.rs"
+
+[dependencies]
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[build-dependencies]
+# Will be added in M2 (Zig build) and M3 (bindgen)
+# cc = { workspace = true }
+# bindgen = { workspace = true }
+
+[features]
+default = []
+# Future: enables real libopus build via Zig
+libopus = []

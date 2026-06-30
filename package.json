@@ -1,0 +1,132 @@
+{
+  "name": "@kryxjs/codecs-opus",
+  "version": "0.1.0-alpha.0",
+  "description": "Opus audio encoder/decoder for the Kryx multimedia ecosystem — bindings to libopus 1.5.2 via Zig FFI",
+  "type": "commonjs",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": {
+        "import": "./dist/index.d.mts",
+        "require": "./dist/index.d.cts"
+      },
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.cjs"
+    },
+    "./register": {
+      "types": {
+        "import": "./dist/register.d.mts",
+        "require": "./dist/register.d.cts"
+      },
+      "import": "./dist/register.mjs",
+      "require": "./dist/register.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "preartifacts": "node scripts/create-npm-dirs.js",
+    "artifacts": "napi artifacts",
+    "build:native": "napi build --platform --release --cargo-cwd crates/opus-node --js index.js --dts index.d.ts",
+    "build:native:debug": "napi build --platform --cargo-cwd crates/opus-node --js index.js --dts index.d.ts",
+    "build:ts": "tsup && node scripts/fix-dts.js",
+    "build": "npm run build:native && npm run build:ts",
+    "build:debug": "npm run build:native:debug && npm run build:ts",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run test:rust && npm run test:vitest",
+    "test:vitest": "cross-env VITE_CJS_IGNORE_WARNING=true vitest run",
+    "test:watch": "cross-env VITE_CJS_IGNORE_WARNING=true vitest",
+    "test:rust": "cross-env CARGO_INCREMENTAL=0 cargo test --workspace --exclude opus-node",
+    "test:coverage": "cross-env VITE_CJS_IGNORE_WARNING=true vitest run --coverage",
+    "lint": "eslint \"src/**/*.ts\" \"__tests__/**/*.ts\"",
+    "format": "prettier --write \"src/**/*.{ts,js}\" \"__tests__/**/*.ts\"",
+    "format:rust": "cargo fmt --all",
+    "clippy": "cargo clippy --workspace --all-targets -- -D warnings",
+    "clean": "node -e \"const fs=require('fs');['dist','target','index.js','index.d.ts','npm','zig-out','.zig-cache'].forEach(p=>fs.rmSync(p,{recursive:true,force:true}));fs.readdirSync('.').filter(f=>f.endsWith('.node')).forEach(f=>fs.rmSync(f,{force:true}));console.log('✓ Cleaned')\"",
+    "version": "napi version"
+  },
+  "files": [
+    "dist/",
+    "index.js",
+    "index.d.ts",
+    "README.md",
+    "README.es.md",
+    "LICENSE",
+    "NOTICE",
+    "CHANGELOG.md"
+  ],
+  "keywords": [
+    "opus",
+    "audio",
+    "codec",
+    "encoder",
+    "decoder",
+    "libopus",
+    "voip",
+    "music",
+    "kryx",
+    "kryxjs",
+    "multimedia",
+    "rust",
+    "zig",
+    "napi",
+    "native"
+  ],
+  "author": "Brashkie",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Brashkie/kryx-codecs-opus.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Brashkie/kryx-codecs-opus/issues"
+  },
+  "homepage": "https://github.com/Brashkie/kryx-codecs-opus#readme",
+  "engines": {
+    "node": ">= 18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "napi": {
+    "name": "kryx-codecs-opus",
+    "triples": {
+      "defaults": true,
+      "additional": [
+        "x86_64-unknown-linux-musl",
+        "aarch64-unknown-linux-gnu",
+        "aarch64-apple-darwin",
+        "aarch64-pc-windows-msvc"
+      ]
+    }
+  },
+  "dependencies": {
+    "@kryxjs/core": "^0.1.0",
+    "@kryxjs/codecs": "^0.1.0"
+  },
+  "optionalDependencies": {
+    "@kryxjs/codecs-opus-win32-x64-msvc": "0.1.0-alpha.0",
+    "@kryxjs/codecs-opus-win32-arm64-msvc": "0.1.0-alpha.0",
+    "@kryxjs/codecs-opus-darwin-x64": "0.1.0-alpha.0",
+    "@kryxjs/codecs-opus-darwin-arm64": "0.1.0-alpha.0",
+    "@kryxjs/codecs-opus-linux-x64-gnu": "0.1.0-alpha.0",
+    "@kryxjs/codecs-opus-linux-x64-musl": "0.1.0-alpha.0",
+    "@kryxjs/codecs-opus-linux-arm64-gnu": "0.1.0-alpha.0"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "2.18.4",
+    "@types/node": "^20.11.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "@vitest/coverage-v8": "^1.2.0",
+    "cross-env": "^7.0.3",
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.0",
+    "tsup": "^8.0.1",
+    "tsx": "^4.7.0",
+    "typescript": "^6.0.3",
+    "vitest": "^1.2.0"
+  }
+}

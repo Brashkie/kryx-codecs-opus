@@ -1,0 +1,87 @@
+═══════════════════════════════════════════════════════════════════════════════
+@kryxjs/codecs-opus — third-party attribution
+═══════════════════════════════════════════════════════════════════════════════
+
+@kryxjs/codecs-opus is licensed under the Apache License, Version 2.0.
+Copyright 2026 Brashkie.
+
+This product bundles libopus 1.5.2, which is licensed under the
+BSD-3-Clause license.
+
+───────────────────────────────────────────────────────────────────────────────
+libopus 1.5.2
+───────────────────────────────────────────────────────────────────────────────
+
+Location:  vendor/libopus/
+License:   BSD-3-Clause (see vendor/libopus/COPYING for full text)
+Source:    https://github.com/xiph/opus
+Release:   https://github.com/xiph/opus/releases/tag/v1.5.2
+Date:      2024-04-10
+
+Copyright 2001-2023 Xiph.Org, Skype Limited, Octasic,
+                    Jean-Marc Valin, Timothy B. Terriberry,
+                    CSIRO, Gregory Maxwell, Mark Borgerding,
+                    Erik de Castro Lopo, Mozilla, Amazon
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+
+- Redistributions of source code must retain the above copyright
+  notice, this list of conditions and the following disclaimer.
+
+- Redistributions in binary form must reproduce the above copyright
+  notice, this list of conditions and the following disclaimer in the
+  documentation and/or other materials provided with the distribution.
+
+- Neither the name of Internet Society, IETF or IETF Trust, nor the
+  names of specific contributors, may be used to endorse or promote
+  products derived from this software without specific prior written
+  permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
+OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+───────────────────────────────────────────────────────────────────────────────
+Modifications to libopus in this distribution
+───────────────────────────────────────────────────────────────────────────────
+
+The libopus sources have been vendored as-is from the v1.5.2 release, with
+the following exceptions to reduce repository size (these directories are
+not required at runtime):
+
+  - dnn/torch/         (PyTorch training scripts for DNN models)
+  - dnn/training_tf2/  (TensorFlow training scripts for DNN models)
+  - doc/               (HTML documentation, regenerable from source)
+  - tests/             (libopus internal test suite)
+  - training/          (Auxiliary training scripts)
+
+The runtime C and header files (celt/, silk/, src/, include/, dnn/ runtime,
+cmake/, m4/, meson/, scripts/) are preserved unmodified.
+
+No modifications to the libopus source code itself have been made. All
+optimizations and SIMD code paths are configured at build time via Zig.
+
+───────────────────────────────────────────────────────────────────────────────
+Original libopus authors (from vendor/libopus/AUTHORS)
+───────────────────────────────────────────────────────────────────────────────
+
+Jean-Marc Valin (jmvalin@jmvalin.ca)
+Koen Vos (koenvos74@gmail.com)
+Timothy Terriberry (tterribe@xiph.org)
+Karsten Vandborg Sorensen (karsten.vandborg.sorensen@skype.net)
+Soren Skak Jensen (ssjensen@gn.com)
+Gregory Maxwell (greg@xiph.org)
+
+═══════════════════════════════════════════════════════════════════════════════
+End of NOTICE
+═══════════════════════════════════════════════════════════════════════════════

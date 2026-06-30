@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  APP_NAME: kryx-codecs-opus
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # ═════════════════════════════════════════════════════════════════════════
+  # Rust tests (workspace, excludes napi crate which needs Node)
+  # ═════════════════════════════════════════════════════════════════════════
+  rust-test:
+    name: Rust tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Run tests (excluding napi crate)
+        run: cargo test --workspace --exclude opus-node --verbose
+
+  # ═════════════════════════════════════════════════════════════════════════
+  # Clippy + Rustfmt
+  # ═════════════════════════════════════════════════════════════════════════
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+
+  rustfmt:
+    name: Rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --all --check
+
+  # ═════════════════════════════════════════════════════════════════════════
+  # TypeScript tests
+  # ═════════════════════════════════════════════════════════════════════════
+  ts-test:
+    name: TypeScript tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: npm install
+      - run: npm run typecheck
+      - run: npm run lint
+      - name: Build native (debug, needed by Vitest)
+        run: npm run build:native:debug
+      - run: npm run test:vitest
+
+  # ═════════════════════════════════════════════════════════════════════════
+  # Native builds across all 7 platforms (compile-only, no publish)
+  # ═════════════════════════════════════════════════════════════════════════
+  native-build:
+    name: ${{ matrix.settings.target }}
+    runs-on: ${{ matrix.settings.host }}
+    strategy:
+      fail-fast: false
+      matrix:
+        settings:
+          - host: macos-latest
+            target: x86_64-apple-darwin
+          - host: macos-latest
+            target: aarch64-apple-darwin
+          - host: windows-latest
+            target: x86_64-pc-windows-msvc
+          - host: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.settings.target }}
+      - uses: Swatinem/rust-cache@v2
+      - run: npm install
+      - name: Build native
+        run: npm run build:native

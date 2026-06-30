@@ -1,0 +1,40 @@
+[workspace]
+resolver = "2"
+members = ["crates/opus-core", "crates/opus-node"]
+
+[workspace.package]
+version = "0.1.0-alpha.0"
+edition = "2021"
+rust-version = "1.80"
+license = "Apache-2.0"
+authors = ["Brashkie <dev@brashkie.dev>"]
+repository = "https://github.com/Brashkie/kryx-codecs-opus"
+homepage = "https://github.com/Brashkie/kryx-codecs-opus"
+
+[workspace.dependencies]
+# Async + utility
+thiserror = "1.0"
+tracing = "0.1"
+once_cell = "1.20"
+
+# napi-rs v2 pinned (v3 needs Node 20+, breaks Alpine CI)
+napi = { version = "2", default-features = false, features = ["napi8", "async"] }
+napi-derive = "2"
+napi-build = "2"
+
+# C/FFI build
+cc = "1.0"
+bindgen = "0.69"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
+debug = false
+
+[profile.bench]
+opt-level = 3
+lto = "fat"
+debug = true
