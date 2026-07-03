@@ -2,31 +2,31 @@
 //!
 //! Opus codec for the Kryx ecosystem.
 //!
-//! ## Status: SKELETON (M1 — vendoring only)
+//! ## Status: M2 COMPLETE — libopus linked, FFI verified.
 //!
-//! This crate currently exposes only the type signatures of `OpusEncoder` and
-//! `OpusDecoder` with stub implementations that return `Unsupported`.
+//! - ✅ **M1**: libopus 1.5.2 vendored (`vendor/libopus/`).
+//! - ✅ **M2**: Zig builds libopus.a, Rust links it, FFI works
+//!   (`opus_get_version_string()` accessible via `sys::version_string()`).
+//! - ⏸ **M3**: full FFI surface via bindgen on Zig shim (`zig/include/opus_shim.h`).
+//! - ⏸ **M4**: real encode/decode using libopus.
 //!
-//! The real implementation requires:
-//!   - **M2**: Zig build script for `vendor/libopus/`
-//!   - **M3**: Rust ↔ Zig FFI via bindgen
-//!   - **M4**: Real encode/decode using libopus calls
-//!
-//! See `docs/IMPLEMENTATION.md` in the repo root for the full roadmap.
+//! See `docs/IMPLEMENTATION.md` for the full roadmap.
 
 pub mod decoder;
 pub mod descriptor;
 pub mod encoder;
 pub mod error;
+pub mod sys;
 
 /// Crate version (matches package.json).
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Returns the linked libopus version string.
 ///
-/// Returns `"stub"` until M3 (FFI) is complete.
-pub fn libopus_version() -> &'static str {
-    "stub"
+/// M2+: this is now backed by the real libopus C library via FFI
+/// (`opus_get_version_string()`). Returns e.g. `"libopus 1.5.2"`.
+pub fn libopus_version() -> String {
+    sys::version_string()
 }
 
 #[cfg(test)]
@@ -40,8 +40,14 @@ mod tests {
     }
 
     #[test]
-    fn libopus_stub_until_integrated() {
-        assert_eq!(libopus_version(), "stub");
+    fn libopus_version_is_real() {
+        // M2 acceptance test: libopus_version() no longer returns "stub".
+        // It calls into the actual libopus C library.
+        let v = libopus_version();
+        assert!(
+            v.contains("libopus 1."),
+            "expected 'libopus 1.x.x', got {v:?}"
+        );
     }
 
     #[test]

@@ -2,23 +2,29 @@
  * @kryxjs/codecs-opus
  *
  * Opus encoder/decoder for the Kryx ecosystem. Backed by libopus 1.5.2 via
- * a Zig FFI shim. This package is currently in skeleton state — the
- * public API surface is finalized but the native implementation is pending.
+ * a Zig FFI shim.
+ *
+ * ## Status (M2 — 0.1.0-alpha.1)
+ *
+ * - ✅ M1: libopus 1.5.2 vendored (`vendor/libopus/`).
+ * - ✅ M2: Zig compiles libopus, Rust links it, FFI verified.
+ *   `libopusVersion()` returns the real version string (e.g. "libopus 1.5.2").
+ * - ⏸ M3: full FFI surface via bindgen (encoder_create, encode, etc.).
+ * - ⏸ M4: real encode/decode using libopus.
  *
  * See docs/IMPLEMENTATION.md for the milestone roadmap.
  *
+ * ⚠ ALPHA: `OpusEncoder.encode()` and `OpusDecoder.decode()` still throw
+ * `CodecError('unsupported')`. Wait for beta.0 for functional codec.
+ *
  * @example
  * ```ts
- * import '@kryxjs/codecs-opus' // auto-registers with @kryxjs/codecs
- * import { createDecoder } from '@kryxjs/codecs'
+ * import { libopusVersion, OpusEncoder } from '@kryxjs/codecs-opus'
  *
- * const decoder = createDecoder('opus', { sampleRate: 48000, channels: 2 })
- * ```
+ * console.log(libopusVersion())  // → "libopus 1.5.2"  (M2+)
  *
- * @example Explicit registration:
- * ```ts
- * import { registerOpus } from '@kryxjs/codecs-opus/register'
- * registerOpus()
+ * const enc = new OpusEncoder({ sampleRate: 48000, channels: 2 })
+ * // await enc.encode(frame)  // ← Still throws in alpha.1; works in beta.0
  * ```
  */
 
@@ -30,7 +36,7 @@ export { libopusVersion, nativeAddonVersion } from './native'
 export { registerOpus } from './register'
 
 /** Package version. */
-export const VERSION = '0.1.0-alpha.0' as const
+export const VERSION = '0.1.0-alpha.1' as const
 
-// Side-effect: register on import (one of two registration paths — see ./register.ts).
+// Side-effect: register on import.
 import './register'

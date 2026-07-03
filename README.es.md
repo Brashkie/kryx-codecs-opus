@@ -6,11 +6,12 @@
 
 Bindings a [libopus 1.5.2](https://opus-codec.org) vía Zig FFI
 
+[![npm version](https://img.shields.io/npm/v/@kryxjs/codecs-opus/alpha)](https://www.npmjs.com/package/@kryxjs/codecs-opus)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 [![libopus: BSD-3-Clause](https://img.shields.io/badge/libopus-BSD--3--Clause-green)](NOTICE)
 [![status: alpha](https://img.shields.io/badge/status-alpha-orange)]()
 [![rust 1.80+](https://img.shields.io/badge/rust-1.80%2B-orange?logo=rust)](https://www.rust-lang.org)
-[![zig 0.13](https://img.shields.io/badge/zig-0.13-yellow?logo=zig)](https://ziglang.org)
+[![zig 0.14+](https://img.shields.io/badge/zig-0.14%2B-yellow?logo=zig)](https://ziglang.org)
 [![node ≥18](https://img.shields.io/badge/node-%E2%89%A518-3c873a?logo=node.js)](https://nodejs.org)
 
 [English](README.md) · **Español**
@@ -19,54 +20,57 @@ Bindings a [libopus 1.5.2](https://opus-codec.org) vía Zig FFI
 
 ---
 
-## ⚠️ Estado: ESQUELETO (v0.1.0-alpha.0)
+## ⚠️ Estado: ALPHA (v0.1.0-alpha.1)
 
-La superficie pública de la API está finalizada, pero `encode()` / `decode()`
-son stubs qe lanzan `CodecError('unsupported')`.
+libopus 1.5.2 ahora está **compilado y enlazado** vía Zig — `libopusVersion()`
+devuelve la cadena de versión real. Pero `encode()` / `decode()` siguen lanzando
+`CodecError('unsupported')` — la implementación completa del codec es M4.
 
-Los sources de libopus 1.5.2 ya están vendoreados (`vendor/libopus/`) — el código
-fuente en C está en su lugar. Lo qe falta es el **script de build de Zig** +
-**FFI Rust** para convertir esos sources en un encoder/decoder funcional.
+| Milestone | Estado |
+|-----------|--------|
+| M1 — Vendoring libopus 1.5.2 | ✅ Hecho |
+| M2 — Zig build + FFI verificado | ✅ Hecho (este release) |
+| M3 — Superficie FFI completa (bindgen) | ⏸ Pendiente |
+| M4 — Encode/decode real | ⏸ Pendiente → beta.0 |
+| M5 — Vectores de prueba IETF | ⏸ Pendiente |
+| M6 — Registración con codec registry | ⏸ Pendiente |
+| M7 — Validación de performance | ⏸ Pendiente |
+| M8 — Release estable v0.1.0 | ⏸ Pendiente |
 
-El contrato de API mostrado abajo es estable y no cambiará entre alpha → estable.
-
-Ver [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) para el roadmap de milestones.
+Ver [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) para el roadmap completo.
 
 ---
 
 ## Instalación
 
 ```bash
-npm install @kryxjs/codecs-opus
+# Los releases alpha requieren la tag @alpha explícita
+npm install @kryxjs/codecs-opus@alpha
 ```
 
-> El binario nativo correcto para tu plataforma se instala automáticamente vía
-> `optionalDependencies`. Plataformas soportadas: Windows x64/arm64, macOS x64/arm64,
-> Linux x64 (gnu/musl), Linux arm64 (gnu).
+> El binario nativo correcto para tu plataforma se instala automáticamente
+> vía `optionalDependencies`. Plataformas soportadas: Windows x64/arm64,
+> macOS x64/arm64, Linux x64 (gnu/musl), Linux arm64 (gnu).
 
-## Uso
+### ¿Por qué necesito `@alpha`?
 
-### Auto-registración (default)
+No qeremos qe `npm install @kryxjs/codecs-opus` (sin tag) le dé a los usuarios
+un codec qe aún lanza errores en encode/decode. La opt-in explícita vía
+`@alpha` protege a los usuarios mientras el ecosistema puede ver qe el
+paquete existe.
 
-```ts
-import '@kryxjs/codecs-opus'             // efecto colateral: registra 'opus'
-import { createDecoder } from '@kryxjs/codecs'
+---
 
-const decoder = createDecoder('opus', { sampleRate: 48000, channels: 2 })
-```
-
-### Registración explícita
+## Uso (lo qe funciona en alpha.1)
 
 ```ts
-import { registerOpus } from '@kryxjs/codecs-opus/register'
-registerOpus()
-```
+import { libopusVersion, OpusEncoder, OpusApplication } from '@kryxjs/codecs-opus'
 
-### Uso directo de las clases
+// ✅ Funciona: introspección
+console.log(libopusVersion())
+// → "libopus 1.5.2"
 
-```ts
-import { OpusDecoder, OpusEncoder, OpusApplication } from '@kryxjs/codecs-opus'
-
+// ✅ Funciona: construcción + validación
 const enc = new OpusEncoder({
   sampleRate: 48000,
   channels: 2,
@@ -74,7 +78,9 @@ const enc = new OpusEncoder({
   bitrate: 128_000,
 })
 
-const packet = await enc.encode(frame)
+// ❌ Aún lanza en alpha.1 (M4 pendiente):
+// const packet = await enc.encode(frame)
+//   → CodecError('unsupported'): OpusEncoder.encode() not yet implemented
 ```
 
 ## Configuración
@@ -88,51 +94,24 @@ interface OpusConfig {
 }
 ```
 
-### Modos de aplicación
-
-| Modo | Cuándo usarlo |
-|------|---------------|
-| `voip` | Llamadas de voz, conferencias. Favorece la inteligibilidad del habla. |
-| `audio` | Música, broadcast. Favorece la calidad musical (default). |
-| `lowdelay` | Live streaming, gaming. Mínima latencia, puede reducir calidad levemente. |
-
-### Rangos útiles de bitrate
-
-| Bitrate | Uso típico |
-|---------|------------|
-| 6–12 kbps | Voz de baja calidad con DRED |
-| 32–64 kbps | VoIP de calidad |
-| 96–128 kbps | Música estéreo de alta calidad |
-| 256 kbps | Transparente (sin pérdida perceptual) |
-
 ---
 
 ## Arquitectura
 
 ```
-@kryxjs/codecs-opus (paquete npm)
+@kryxjs/codecs-opus (paqete npm)
     ↓ fachada TypeScript (src/)
     ↓
 @kryxjs/codecs-opus.<plataforma>.node (binario por plataforma)
     ↓ bindings napi-rs (crates/opus-node/)
     ↓
 opus-core (Rust core, crates/opus-core/)
-    ↓ FFI extern "C" (generado por bindgen en build time)
+    ↓ extern "C" FFI (M2: hand-written; M3: bindgen)
     ↓
-zig/src/opus_shim.zig (wrapper Zig delgado, expone ABI de C limpia)
+libopus.a compilado con Zig (zig/build.zig)
     ↓
 vendor/libopus/ (sources C de libopus 1.5.2, BSD-3-Clause)
 ```
-
-## ¿Por qué Zig?
-
-[Zig](https://ziglang.org) maneja la compilación de C de libopus con un único
-comando (sin necesidad de autoconf/configure en todas las plataformas). También
-nos da:
-
-- Cross-compilation gratuita entre targets
-- Detección consistente de SIMD (SSE/AVX/NEON) en todas las plataformas
-- Builds determinísticos (mismo input → mismo .a output)
 
 ---
 
@@ -140,10 +119,9 @@ nos da:
 
 ### Pre-requisitos
 
-- Rust ≥1.80 (`rustup install stable`)
-- Zig 0.13.x ([descarga](https://ziglang.org/download/))
-- Node.js ≥18
-- bindgen (`cargo install bindgen-cli`)
+- **Rust ≥1.80** — <https://rustup.rs>
+- **Zig 0.14.1** — <https://ziglang.org/download/>
+- **Node.js ≥18** — <https://nodejs.org>
 
 ### Setup
 
@@ -151,43 +129,32 @@ nos da:
 git clone https://github.com/Brashkie/kryx-codecs-opus.git
 cd kryx-codecs-opus
 npm install
-npm run build:debug
+npm run build:debug   # ← compila libopus con Zig + Rust napi crate + TS
 npm test
 ```
 
-### Estructura del repositorio
+El primer build toma ~1-2 minutos (Zig compilando libopus). Los siguientes
+builds reutilizan el `libopus.a` cacheado y toman ~5 segundos.
+
+### Cómo funciona el build (M2)
 
 ```
-kryx-codecs-opus/
-├── src/                     Capa TypeScript (OpusEncoder, OpusDecoder, tipos)
-├── crates/
-│   ├── opus-core/           Rust core (esqueleto)
-│   └── opus-node/           bindings napi-rs (esqueleto)
-├── zig/                     Script de build Zig + shim de ABI C (M2 pendiente)
-├── vendor/libopus/          libopus 1.5.2 sources vendoreados (BSD-3-Clause)
-├── __tests__/               Tests Vitest (contrato de API hoy, tests reales luego)
-├── docs/
-│   └── IMPLEMENTATION.md    Plan de los 8 milestones
-├── scripts/                 Helpers de build
-└── .github/workflows/       CI / Release
+$ npm run build:native
+        ↓
+cargo build (para crates/opus-node)
+        ↓
+crates/opus-core/build.rs se ejecuta
+        ├─ Verifica qe Zig esté instalado (mensaje claro si no)
+        ├─ Ejecuta `zig build -Doptimize=Debug` (o ReleaseFast en release)
+        │  ├─ Compila vendor/libopus/*.c (OPUS + CELT + SILK)
+        │  └─ Produce zig-out/lib/libopus.a
+        ├─ Le dice a cargo qe linkee estáticamente contra libopus
+        └─ Configura rerun triggers para cambios en .zig/.c/.h
+        ↓
+crates/opus-node compilado → binario .node
 ```
 
----
-
-## Roadmap resumido
-
-| Milestone | Estado | Versión objetivo |
-|-----------|--------|------------------|
-| **M1 — Vendoring libopus 1.5.2** | ✅ Hecho | v0.1.0-alpha.0 |
-| M2 — Script de build Zig | ⏸ Pendiente | v0.1.0-alpha.1 |
-| M3 — FFI Rust ↔ Zig | ⏸ Pendiente | v0.1.0-alpha.2 |
-| M4 — Encoder/Decoder reales | ⏸ Pendiente | v0.1.0-beta.0 |
-| M5 — Vectores de prueba IETF | ⏸ Pendiente | v0.1.0-beta.1 |
-| M6 — Integración con registry | ⏸ Pendiente | v0.1.0-beta.2 |
-| M7 — Performance | ⏸ Pendiente | v0.1.0-rc.0 |
-| M8 — Release estable | ⏸ Pendiente | v0.1.0 |
-
-Ver [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) para detalles.
+El usuario solo ejecuta `npm run build:native`.
 
 ---
 
@@ -200,11 +167,3 @@ Copyright © 2026 Brashkie.
 
 - [`@kryxjs/core`](https://www.npmjs.com/package/@kryxjs/core) — buffers y pipelines fundamentales
 - [`@kryxjs/codecs`](https://www.npmjs.com/package/@kryxjs/codecs) — framework de codecs
-
----
-
-<div align="center">
-
-[English](README.md) · **Español**
-
-</div>
