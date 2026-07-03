@@ -8,6 +8,7 @@ on:
 env:
   APP_NAME: kryx-codecs-opus
   CARGO_TERM_COLOR: always
+  ZIG_VERSION: 0.14.1
 
 jobs:
   # ═══════════════════════════════════════════════════════════════════════════
@@ -43,6 +44,10 @@ jobs:
         with:
           targets: ${{ matrix.settings.target }}
       - uses: Swatinem/rust-cache@v2
+      - name: Install Zig ${{ env.ZIG_VERSION }}
+        uses: mlugg/setup-zig@v1
+        with:
+          version: ${{ env.ZIG_VERSION }}
       - run: npm install
       - run: npm run build:native
       - uses: actions/upload-artifact@v4
@@ -54,7 +59,7 @@ jobs:
             index.d.ts
 
   # ═══════════════════════════════════════════════════════════════════════════
-  # Publish all packages to npm
+  # Publish all packages to npm (with the `alpha` dist-tag)
   # ═══════════════════════════════════════════════════════════════════════════
   publish:
     needs: build-natives

@@ -9,19 +9,32 @@ on:
 env:
   APP_NAME: kryx-codecs-opus
   CARGO_TERM_COLOR: always
+  ZIG_VERSION: 0.14.1
 
 jobs:
   # ═════════════════════════════════════════════════════════════════════════
-  # Rust tests (workspace, excludes napi crate which needs Node)
+  # Rust tests + FFI verification across all 3 platforms
+  # This is the M2 acceptance gate: Zig must build libopus and Rust must
+  # link + call it on Windows, Linux, and macOS.
   # ═════════════════════════════════════════════════════════════════════════
   rust-test:
-    name: Rust tests
-    runs-on: ubuntu-latest
+    name: Rust + FFI (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - name: Run tests (excluding napi crate)
+      - name: Install Zig ${{ env.ZIG_VERSION }}
+        uses: mlugg/setup-zig@v1
+        with:
+          version: ${{ env.ZIG_VERSION }}
+      - name: Verify Zig
+        run: zig version
+      - name: Run Rust tests (Zig builds libopus, FFI verified)
         run: cargo test --workspace --exclude opus-node --verbose
 
   # ═════════════════════════════════════════════════════════════════════════
@@ -36,6 +49,10 @@ jobs:
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
+      - name: Install Zig
+        uses: mlugg/setup-zig@v1
+        with:
+          version: ${{ env.ZIG_VERSION }}
       - run: cargo clippy --workspace --all-targets -- -D warnings
 
   rustfmt:
@@ -49,11 +66,15 @@ jobs:
       - run: cargo fmt --all --check
 
   # ═════════════════════════════════════════════════════════════════════════
-  # TypeScript tests
+  # TypeScript tests + full native build (Zig → Rust → NAPI → .node)
   # ═════════════════════════════════════════════════════════════════════════
   ts-test:
-    name: TypeScript tests
-    runs-on: ubuntu-latest
+    name: TypeScript + native (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -61,15 +82,21 @@ jobs:
           node-version: 20
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      - name: Install Zig
+        uses: mlugg/setup-zig@v1
+        with:
+          version: ${{ env.ZIG_VERSION }}
       - run: npm install
       - run: npm run typecheck
       - run: npm run lint
-      - name: Build native (debug, needed by Vitest)
+      - name: Build native (Zig + Rust + NAPI)
         run: npm run build:native:debug
       - run: npm run test:vitest
+      - name: Smoke test — libopusVersion returns real version
+        run: node -e "const {libopusVersion}=require('./'); const v=libopusVersion(); console.log(v); if(!v.includes('libopus 1.')) process.exit(1)"
 
   # ═════════════════════════════════════════════════════════════════════════
-  # Native builds across all 7 platforms (compile-only, no publish)
+  # Cross-platform native builds (all 7 release targets, compile-only)
   # ═════════════════════════════════════════════════════════════════════════
   native-build:
     name: ${{ matrix.settings.target }}
@@ -95,6 +122,10 @@ jobs:
         with:
           targets: ${{ matrix.settings.target }}
       - uses: Swatinem/rust-cache@v2
+      - name: Install Zig
+        uses: mlugg/setup-zig@v1
+        with:
+          version: ${{ env.ZIG_VERSION }}
       - run: npm install
       - name: Build native
         run: npm run build:native
