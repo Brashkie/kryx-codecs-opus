@@ -20,7 +20,7 @@ import { CodecError } from '@kryxjs/codecs'
 
 describe('@kryxjs/codecs-opus — public API surface', () => {
   it('VERSION matches package.json', () => {
-    expect(VERSION).toBe('0.1.0-alpha.0')
+    expect(VERSION).toBe('0.1.0-alpha.1')
   })
 
   it('nativeAddonVersion returns non-empty string', () => {
@@ -28,8 +28,8 @@ describe('@kryxjs/codecs-opus — public API surface', () => {
     expect(nativeAddonVersion().length).toBeGreaterThan(0)
   })
 
-  it('libopusVersion returns "stub" in skeleton', () => {
-    expect(libopusVersion()).toBe('stub')
+  it('libopusVersion returns the real libopus version', () => {
+    expect(libopusVersion()).toContain('libopus 1.')
   })
 
   it('OpusApplication has 3 modes', () => {

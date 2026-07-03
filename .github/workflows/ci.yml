@@ -15,7 +15,9 @@ env:
 jobs:
   # ═════════════════════════════════════════════════════════════════════════
   # Rust tests + FFI verification across all 3 platforms
-  # M2 acceptance gate: Zig builds libopus, Rust links + calls it, on all OSes.
+  # NOTE: macOS pinned to macos-14. macos-latest ships Xcode 26.4 whose SDK
+  # is incompatible with Zig 0.14.1 (undefined _abort/_free/etc from build.o).
+  # See ziglang/zig#31658. macos-14 has a compatible Xcode.
   # ═════════════════════════════════════════════════════════════════════════
   rust-test:
     name: Rust + FFI (${{ matrix.os }})
@@ -23,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-14]
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -74,7 +76,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-14]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -105,9 +107,9 @@ jobs:
       fail-fast: false
       matrix:
         settings:
-          - host: macos-latest
+          - host: macos-14
             target: x86_64-apple-darwin
-          - host: macos-latest
+          - host: macos-14
             target: aarch64-apple-darwin
           - host: windows-latest
             target: x86_64-pc-windows-msvc

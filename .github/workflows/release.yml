@@ -23,9 +23,11 @@ jobs:
             target: x86_64-pc-windows-msvc
           - host: windows-latest
             target: aarch64-pc-windows-msvc
-          - host: macos-latest
+          # macOS pinned to macos-14 (Xcode 26.4 on macos-latest breaks
+          # Zig 0.14.1 — see ziglang/zig#31658)
+          - host: macos-14
             target: x86_64-apple-darwin
-          - host: macos-latest
+          - host: macos-14
             target: aarch64-apple-darwin
           - host: ubuntu-latest
             target: x86_64-unknown-linux-gnu
