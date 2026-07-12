@@ -1,3 +1,0 @@
-0
-6942 674642549632 1782753898000000000 71698f610bd24abcecdb798deb042c59 0 F:\Brashkie\PROYECTOS\NPM\kryx-codecs-opus\vendor\libopus\silk\debug.c
-12994 674642554144 1782753898000000000 249d4cc1d214ec7d9091158268dffc25 0 F:\Brashkie\PROYECTOS\NPM\kryx-codecs-opus\vendor\libopus\silk\debug.h

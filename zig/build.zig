@@ -1,15 +1,16 @@
-//! build.zig — libopus 1.5.2 static library build (M2)
+//! build.zig — libopus 1.5.2 static library build (M2/M3)
 //!
 //! Compiled with Zig 0.14.x. Produces `zig-out/lib/libopus.a` (Linux/macOS)
-//! or `zig-out/lib/opus.lib` (Windows MSVC) that Rust `build.rs` links.
+//! or `zig-out/lib/opus.lib` (Windows MSVC).
 //!
 //! Invoked automatically by `crates/opus-core/build.rs`.
 //!
-//! IMPORTANT: On Windows MSVC targets, libopus's `celt_fatal()` calls
-//! `fprintf`, which lives in the MSVC C runtime. We must link libc so
-//! the symbol resolves. `link_libc = true` handles this on all platforms
-//! (Zig picks the right libc: msvcrt on Windows-msvc, glibc/musl on Linux,
-//! system libc on macOS).
+//! IMPORTANT NOTES:
+//!   - `link_libc = true` resolves fprintf/stderr used by celt_fatal.
+//!   - We do NOT enable ENABLE_HARDENING / stack protector. On the MSVC
+//!     target that pulls in __stack_chk_fail / __stack_chk_guard / __chkstk_ms
+//!     from the compiler runtime, which then go unresolved at the final Rust
+//!     link. `-fno-stack-protector` keeps the static lib self-contained.
 
 const std = @import("std");
 
@@ -25,12 +26,23 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    // CRITICAL: link libc so fprintf/stderr (used by celt_fatal) resolve.
-    // On windows-msvc this links against msvcrt; on Linux glibc/musl; on
-    // macOS the system libSystem.
+    // Resolve libc symbols (fprintf/stderr from celt_fatal, memcpy, etc.)
     lib.linkLibC();
 
+    // Disable stack checking / probing at the module level. On the
+    // windows-msvc target, Zig otherwise emits calls to __chkstk_ms (a
+    // GCC/MinGW-style stack-probe helper) that don't exist in the MSVC link,
+    // producing "unresolved external ___chkstk_ms". Disabling stack_check
+    // (together with -fno-stack-protector in the C flags) keeps the static
+    // archive self-contained across all targets.
+    lib.root_module.stack_check = false;
+    lib.root_module.stack_protector = false;
+
     // ─── libopus compile flags ────────────────────────────────────────────
+    // NOTE: no -DENABLE_HARDENING (stack protector) — it introduces
+    // __stack_chk_* / __chkstk_ms symbols that don't resolve at the final
+    // MSVC link. We explicitly disable the stack protector to keep the
+    // static archive self-contained across all targets.
     const opus_flags = &[_][]const u8{
         "-DOPUS_BUILD",
         "-DPACKAGE_VERSION=\"1.5.2\"",
@@ -39,7 +51,8 @@ pub fn build(b: *std.Build) void {
         "-DHAVE_LRINT",
         "-DFLOATING_POINT",
         "-DVAR_ARRAYS",
-        "-DENABLE_HARDENING",
+        "-fno-stack-protector",
+        "-mno-stack-arg-probe",
         "-fno-math-errno",
         "-std=c99",
         "-Wno-unused-function",
@@ -234,6 +247,14 @@ pub fn build(b: *std.Build) void {
     }
 
     b.installArtifact(lib);
+
+    // Safety net for Windows MSVC: provide ___chkstk_ms in case the
+    // -mno-stack-arg-probe flag doesn't fully suppress its generation on this
+    // Zig version. The file compiles to nothing on non-Windows/x86_64 targets.
+    lib.addCSourceFile(.{
+        .file = b.path("src/chkstk.c"),
+        .flags = &[_][]const u8{"-fno-stack-protector"},
+    });
 
     const check_step = b.step("check", "Build libopus.a and verify");
     check_step.dependOn(&lib.step);
