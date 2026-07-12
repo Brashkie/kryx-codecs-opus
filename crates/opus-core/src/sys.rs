@@ -104,12 +104,15 @@ extern "C" {
         max_data_bytes: i32,
     ) -> i32;
 
-    /// Perform a control request on the encoder (varargs in C).
+    /// Perform a control request on the encoder.
     ///
-    /// We only ever call it with a single trailing i32 argument (e.g. setting
-    /// the bitrate), so we declare that concrete signature rather than a
-    /// variadic one.
-    pub fn opus_encoder_ctl(st: *mut OpusEncoder, request: c_int, value: i32) -> c_int;
+    /// In C this is variadic: `int opus_encoder_ctl(OpusEncoder *st, int request, ...)`.
+    /// It MUST be declared variadic here — declaring it with a fixed trailing
+    /// argument works on x86-64 but breaks on aarch64 (e.g. Apple Silicon),
+    /// where the calling convention passes variadic args differently (on the
+    /// stack rather than in registers). We call it with a single trailing i32
+    /// for the CTLs we use (e.g. OPUS_SET_BITRATE_REQUEST).
+    pub fn opus_encoder_ctl(st: *mut OpusEncoder, request: c_int, ...) -> c_int;
 
     /// Free an encoder state created by opus_encoder_create.
     pub fn opus_encoder_destroy(st: *mut OpusEncoder);
@@ -119,7 +122,11 @@ extern "C" {
     ///
     /// `Fs`: sample rate. `channels`: 1 or 2. `error`: out-param.
     /// Returns null on failure.
-    pub fn opus_decoder_create(Fs: i32, channels: c_int, error: *mut c_int) -> *mut OpusDecoder;
+    pub fn opus_decoder_create(
+        Fs: i32,
+        channels: c_int,
+        error: *mut c_int,
+    ) -> *mut OpusDecoder;
 
     /// Decode an Opus packet to interleaved i16 PCM.
     ///
