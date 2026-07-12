@@ -20,7 +20,7 @@ import { CodecError } from '@kryxjs/codecs'
 
 describe('@kryxjs/codecs-opus — public API surface', () => {
   it('VERSION matches package.json', () => {
-    expect(VERSION).toBe('0.1.0-alpha.1')
+    expect(VERSION).toBe('0.1.0-alpha.2')
   })
 
   it('nativeAddonVersion returns non-empty string', () => {
