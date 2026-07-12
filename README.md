@@ -20,22 +20,25 @@ Bindings to [libopus 1.5.2](https://opus-codec.org) via Zig FFI
 
 ---
 
-## ⚠️ Status: ALPHA (v0.1.0-alpha.1)
+## ⚠️ Status: ALPHA (v0.1.0-alpha.2)
 
-libopus 1.5.2 is now **compiled and linked** via Zig — `libopusVersion()`
-returns the real linked version string. But `encode()` / `decode()` still
-throw `CodecError('unsupported')` — full codec implementation is M4.
+libopus 1.5.2 is compiled and linked, and the full FFI surface is wired up.
+`OpusEncoder` / `OpusDecoder` now create and free real libopus states, and
+`set_bitrate()` works. But `encode()` / `decode()` still throw
+`CodecError('unsupported')` — real codec work is M4/M5.
 
 | Milestone | Status |
 |-----------|--------|
 | M1 — Vendor libopus 1.5.2 | ✅ Done |
-| M2 — Zig build + FFI verified | ✅ Done (this release) |
-| M3 — Full FFI surface (bindgen) | ⏸ Pending |
-| M4 — Real encode/decode | ⏸ Pending → beta.0 |
-| M5 — IETF test vectors | ⏸ Pending |
-| M6 — Codec registry hookup | ⏸ Pending |
-| M7 — Performance validation | ⏸ Pending |
-| M8 — Stable v0.1.0 | ⏸ Pending |
+| M2 — Zig build + FFI verified | ✅ Done |
+| M3 — Full FFI + create/destroy | ✅ Done (this release) |
+| M4 — Encoder (encode) | ⏸ Pending → beta.0 |
+| M5 — Decoder (decode) | ⏸ Pending |
+| M6 — Roundtrip validation | ⏸ Pending |
+| M7 — IETF test vectors | ⏸ Pending |
+| M8 — Codec registry hookup | ⏸ Pending |
+| M9 — Performance validation | ⏸ Pending |
+| M10 — Stable v0.1.0 | ⏸ Pending |
 
 See [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) for the full roadmap.
 
@@ -60,7 +63,7 @@ protects users while letting the ecosystem see the package exists.
 
 ---
 
-## Usage (what works in alpha.1)
+## Usage (what works in alpha.2)
 
 ```ts
 import { libopusVersion, OpusEncoder, OpusApplication } from '@kryxjs/codecs-opus'
@@ -69,7 +72,7 @@ import { libopusVersion, OpusEncoder, OpusApplication } from '@kryxjs/codecs-opu
 console.log(libopusVersion())
 // → "libopus 1.5.2"
 
-// ✅ Works: construction + validation
+// ✅ Works: construction + validation (creates a real libopus encoder)
 const enc = new OpusEncoder({
   sampleRate: 48000,
   channels: 2,
@@ -77,7 +80,7 @@ const enc = new OpusEncoder({
   bitrate: 128_000,
 })
 
-// ❌ Still throws in alpha.1 (M4 pending):
+// ❌ Still throws in alpha.2 (M4 pending):
 // const packet = await enc.encode(frame)
 //   → CodecError('unsupported'): OpusEncoder.encode() not yet implemented
 ```
@@ -105,7 +108,7 @@ interface OpusConfig {
     ↓ napi-rs bindings (crates/opus-node/)
     ↓
 opus-core (Rust core, crates/opus-core/)
-    ↓ extern "C" FFI (M2: hand-written; M3: bindgen)
+    ↓ extern "C" FFI (hand-written in sys.rs)
     ↓
 Zig-built libopus.a (zig/build.zig)
     ↓
@@ -164,7 +167,7 @@ kryx-codecs-opus/
 │   ├── opus-core/           Rust core
 │   │   ├── build.rs         ← Smart build orchestration (M2)
 │   │   └── src/
-│   │       ├── sys.rs       ← Hand-written FFI (M2 minimal)
+│   │       ├── sys.rs       ← Hand-written FFI (encoder/decoder/ctl)
 │   │       └── ...
 │   └── opus-node/           napi-rs bindings
 ├── zig/
