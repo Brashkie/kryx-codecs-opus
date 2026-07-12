@@ -122,11 +122,7 @@ extern "C" {
     ///
     /// `Fs`: sample rate. `channels`: 1 or 2. `error`: out-param.
     /// Returns null on failure.
-    pub fn opus_decoder_create(
-        Fs: i32,
-        channels: c_int,
-        error: *mut c_int,
-    ) -> *mut OpusDecoder;
+    pub fn opus_decoder_create(Fs: i32, channels: c_int, error: *mut c_int) -> *mut OpusDecoder;
 
     /// Decode an Opus packet to interleaved i16 PCM.
     ///
