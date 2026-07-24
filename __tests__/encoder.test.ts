@@ -106,8 +106,9 @@ describe('OpusEncoder — errors surface as CodecError', () => {
   })
 
   it('invalid config throws CodecError from the constructor', () => {
-    // Unsupported sample rate is caught by the TS constructor validation.
-    expect(() => new OpusEncoder({ sampleRate: 44100 })).toThrow(CodecError)
+    // Casts bypass the literal types so we can exercise the runtime validation.
+    // Unsupported sample rate.
+    expect(() => new OpusEncoder({ sampleRate: 44100 as unknown as 48000 })).toThrow(CodecError)
     // Unsupported channel count.
     expect(() => new OpusEncoder({ channels: 5 as unknown as 1 })).toThrow(CodecError)
     // Out-of-range bitrate.
