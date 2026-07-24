@@ -20,19 +20,18 @@ Bindings a [libopus 1.5.2](https://opus-codec.org) vía Zig FFI
 
 ---
 
-## ⚠️ Estado: ALPHA (v0.1.0-alpha.2)
+## ⚠️ Estado: ALPHA (v0.1.0-alpha.3)
 
-libopus 1.5.2 está compilado y enlazado, y la superficie FFI completa ya está
-cableada. `OpusEncoder` / `OpusDecoder` ahora crean y liberan estados reales de
-libopus, y `set_bitrate()` funciona. Pero `encode()` / `decode()` todavía lanzan
-`CodecError('unsupported')` — el codec real es M4/M5.
+**La codificación funciona.** `OpusEncoder` produce paquetes Opus reales a
+partir de PCM i16. La decodificación aún no está implementada —
+`OpusDecoder.decode()` sigue lanzando `CodecError('unsupported')` (M5).
 
 | Milestone | Estado |
 |-----------|--------|
 | M1 — Vendoring libopus 1.5.2 | ✅ Hecho |
 | M2 — Zig build + FFI verificado | ✅ Hecho |
-| M3 — FFI completo + create/destroy | ✅ Hecho (este release) |
-| M4 — Encoder (encode) | ⏸ Pendiente → beta.0 |
+| M3 — FFI completo + create/destroy | ✅ Hecho |
+| M4 — Encoder (encode) | ✅ Hecho (este release) |
 | M5 — Decoder (decode) | ⏸ Pendiente |
 | M6 — Validación roundtrip | ⏸ Pendiente |
 | M7 — Vectores de prueba IETF | ⏸ Pendiente |
@@ -58,22 +57,19 @@ npm install @kryxjs/codecs-opus@alpha
 ### ¿Por qué necesito `@alpha`?
 
 No qeremos qe `npm install @kryxjs/codecs-opus` (sin tag) le dé a los usuarios
-un codec qe aún lanza errores en encode/decode. La opt-in explícita vía
-`@alpha` protege a los usuarios mientras el ecosistema puede ver qe el
-paquete existe.
+un codec a medio terminar — la decodificación todavía no está implementada.
+La opt-in explícita vía `@alpha` protege a los usuarios mientras el ecosistema
+puede ver qe el paquete existe.
 
 ---
 
-## Uso (lo qe funciona en alpha.2)
+## Uso
+
+### Codificación (funciona en alpha.3)
 
 ```ts
-import { libopusVersion, OpusEncoder, OpusApplication } from '@kryxjs/codecs-opus'
+import { OpusEncoder, OpusApplication } from '@kryxjs/codecs-opus'
 
-// ✅ Funciona: introspección
-console.log(libopusVersion())
-// → "libopus 1.5.2"
-
-// ✅ Funciona: construcción + validación (crea un encoder real de libopus)
 const enc = new OpusEncoder({
   sampleRate: 48000,
   channels: 2,
@@ -81,9 +77,68 @@ const enc = new OpusEncoder({
   bitrate: 128_000,
 })
 
-// ❌ Aún lanza en alpha.2 (M4 pendiente):
-// const packet = await enc.encode(frame)
-//   → CodecError('unsupported'): OpusEncoder.encode() not yet implemented
+// API de conveniencia — PCM i16 intercalado entra, paquete Opus sale.
+// Un frame estéreo de 20 ms a 48 kHz = 960 muestras/canal = 1920 i16.
+const pcm = new Int16Array(1920) // tu audio aquí
+const packetBytes = await enc.encodePcm(pcm)
+console.log(packetBytes.length) // → paquete Opus comprimido
+```
+
+### API canónica del framework
+
+El contrato de `@kryxjs/codecs`, compartido por todos los codecs del ecosistema:
+
+```ts
+const packet = await enc.encode({
+  payload: Buffer.from(pcm.buffer), // bytes i16 LE intercalados
+  pts: 0,
+  dts: 0,
+  isKeyframe: true,
+  duration: 0,
+})
+
+packet.payload    // Buffer — el paquete Opus comprimido
+packet.duration   // 960 — muestras por canal
+packet.isKeyframe // true — cada paquete Opus se decodifica independientemente
+```
+
+`encode()` está implementado sobre `encodePcm()`, así qe ambos comparten el
+mismo camino nativo.
+
+### Formato PCM y tamaños de frame
+
+La entrada es PCM **entero de 16 bits con signo, little-endian e intercalado**.
+Para estéreo la disposición es `[L0, R0, L1, R1, ...]`.
+
+El número de muestras por canal debe corresponder a un frame legal de Opus —
+2.5, 5, 10, 20, 40 o 60 ms. A 48 kHz:
+
+| Duración | Muestras/canal |
+|----------|----------------|
+| 2.5 ms | 120 |
+| 5 ms | 240 |
+| 10 ms | 480 |
+| 20 ms | 960 (el más común) |
+| 40 ms | 1920 |
+| 60 ms | 2880 |
+
+Estos valores escalan con la frecuencia de muestreo (a 24 kHz, 20 ms son 480
+muestras). Pasar un tamaño inválido lanza un `CodecError` con la lista de
+valores soportados.
+
+### Decodificación (todavía no — M5)
+
+```ts
+// ❌ Aún lanza en alpha.3:
+// const frame = await dec.decode(packet)
+//   → CodecError('unsupported')
+```
+
+### Introspección
+
+```ts
+import { libopusVersion } from '@kryxjs/codecs-opus'
+console.log(libopusVersion()) // → "libopus 1.5.2"
 ```
 
 ## Configuración

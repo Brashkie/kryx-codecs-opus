@@ -4,153 +4,121 @@ Track from skeleton (v0.1.0-alpha.0) to functional (v0.1.0).
 
 ## Status table
 
-| Milestone | Status | Target version |
-|-----------|--------|----------------|
+| Milestone | Status | Version |
+|-----------|--------|---------|
 | **M1 — Vendoring libopus 1.5.2** | ✅ Done | v0.1.0-alpha.0 |
-| **M2 — Zig build + link verified** | ✅ Done | v0.1.0-alpha.1 (current) |
-| M3 — Full FFI surface (bindgen) | ⏸ Pending | v0.1.0-alpha.2 |
-| M4 — Encoder/Decoder real | ⏸ Pending | v0.1.0-beta.0 |
-| M5 — IETF test vectors | ⏸ Pending | v0.1.0-beta.1 |
-| M6 — Registry hookup | ⏸ Pending | v0.1.0-beta.2 |
-| M7 — Performance | ⏸ Pending | v0.1.0-rc.0 |
-| M8 — Stable release | ⏸ Pending | v0.1.0 |
+| **M2 — Zig build + link verified** | ✅ Done | v0.1.0-alpha.1 |
+| **M3 — Full FFI + create/destroy** | ✅ Done | v0.1.0-alpha.2 |
+| **M4 — Encoder (encode)** | ✅ Done | v0.1.0-alpha.3 (current) |
+| M5 — Decoder (decode) | ⏸ Pending | v0.1.0-beta.0 |
+| M6 — Roundtrip validation | ⏸ Pending | v0.1.0-beta.1 |
+| M7 — IETF test vectors | ⏸ Pending | v0.1.0-beta.2 |
+| M8 — Registry hookup | ⏸ Pending | v0.1.0-beta.3 |
+| M9 — Performance | ⏸ Pending | v0.1.0-rc.0 |
+| M10 — Stable release | ⏸ Pending | v0.1.0 |
+
+**Milestone ordering rationale:** each milestone validates a distinct layer, so
+a failure points at exactly one thing — M2 the build, M3 the FFI and memory
+handling, M4 the encoder, M5 the decoder, M6 the two together.
 
 ---
 
 ## M1 — Vendoring libopus 1.5.2 ✅
 
-Completed in v0.1.0-alpha.0. See CHANGELOG for details.
-
-- ✅ libopus 1.5.2 vendored at `vendor/libopus/`
-- ✅ Non-runtime dirs stripped (17 MB → 4.8 MB)
-- ✅ COPYING preserved, NOTICE with full attribution
-- ✅ `.gitignore` excludes build outputs, tracks sources
+- libopus 1.5.2 vendored at `vendor/libopus/`
+- Non-runtime dirs stripped (17 MB → 4.8 MB)
+- COPYING preserved, NOTICE with full attribution
 
 ---
 
 ## M2 — Zig build + link verification ✅
 
-**Completed in v0.1.0-alpha.1 (this release).**
-
-### What was done
-
-- ✅ `zig/build.zig` — compiles vendored libopus C sources to `libopus.a`.
-  Full OPUS + CELT + SILK (int + float) sources compiled.
-- ✅ `crates/opus-core/build.rs` — smart orchestration:
-  - Checks Zig is installed, gives clear install guide if not
-  - Invokes `zig build` automatically (user only runs `npm run build:native`)
-  - Caches artifact between builds
-  - Handles Debug vs ReleaseFast per cargo profile
-  - Handles cross-platform artifact filename differences
-- ✅ `crates/opus-core/src/sys.rs` — minimal hand-written FFI:
-  - `opus_get_version_string()` extern "C" declaration
-  - `version_string()` safe Rust wrapper
-- ✅ Acceptance tests:
-  - `opus_version_is_reachable_via_ffi` (Zig + linker + Rust FFI end-to-end)
-  - `version_returns_static_pointer_stable_across_calls`
-- ✅ `libopus_version()` in Rust and `libopusVersion()` in TS now return real
-  version (was `"stub"`)
-
-### Why this matters
-
-Without M2, we couldn't have confidence that Zig, cargo, and the C linker
-all work together. Now that `opus_get_version_string()` is callable end-to-end,
-M3 can add the full FFI surface knowing the plumbing works.
+- `zig/build.zig` compiles the vendored C sources (OPUS + CELT + SILK int and
+  float) into a static libopus.
+- `crates/opus-core/build.rs` checks for Zig, invokes `zig build`, caches the
+  artifact, and links it. The user only runs `npm run build:native`.
+- Windows MSVC link fixes: `-fno-stack-protector`, `-mno-stack-arg-probe`, and
+  a `zig/src/chkstk.c` shim providing `__chkstk_ms`.
+- Acceptance: `opus_get_version_string()` reachable from Rust end to end.
 
 ---
 
-## M3 — Full FFI surface via bindgen ⏸
+## M3 — Full FFI surface + create/destroy ✅
 
-**Goal:** Auto-generate Rust FFI declarations for the complete Opus API.
-
-### Tasks
-
-- [ ] `zig/src/opus_shim.zig` — Zig wrapper exposing:
-  - `opus_encoder_create(sample_rate, channels, application, err) -> ?*opaque`
-  - `opus_encode(enc, pcm, frame_size, data, max_data_bytes) -> i32`
-  - `opus_encoder_ctl(enc, request, ...) -> i32` (for bitrate setting)
-  - `opus_encoder_destroy(enc)`
-  - `opus_decoder_create(sample_rate, channels, err) -> ?*opaque`
-  - `opus_decode(dec, data, data_len, pcm, frame_size, decode_fec) -> i32`
-  - `opus_decoder_destroy(dec)`
-  - `opus_strerror(code) -> [*:0]const u8`
-- [ ] `zig/include/opus_shim.h` — C header for bindgen input
-- [ ] Update `zig/build.zig` to also install the shim
-- [ ] Add `bindgen = "0.69"` to `[build-dependencies]` of opus-core
-- [ ] `build.rs` runs `bindgen` on `opus_shim.h` → `OUT_DIR/opus_bindings.rs`
-- [ ] `src/sys.rs` becomes `include!(concat!(env!("OUT_DIR"), "/opus_bindings.rs"))`
-
-### Acceptance
-
-- [ ] Test that creates an OpusEncoder, then destroys it, without segfault
-- [ ] Test that creates an OpusDecoder, then destroys it, without segfault
-
-**Estimated effort**: 1.5 days.
+- Hand-written FFI in `sys.rs` (not bindgen — the surface is small enough that
+  manual bindings stay auditable): encoder/decoder create, encode, decode,
+  ctl, destroy, strerror, plus the `OPUS_*` constants.
+- `opus_encoder_ctl` declared **variadic** to match the C ABI — a fixed-arg
+  declaration works on x86-64 but breaks on aarch64.
+- `OpusEncoder`/`OpusDecoder` hold real `NonNull` handles; `Drop` frees them.
+- `OpusErrorKind` with 8 idiomatic variants, preserving the original numeric
+  libopus code in `OpusError.code`.
+- Acceptance: real create/destroy with no segfault or leak (50× stress loops).
 
 ---
 
-## M4 — Encoder/Decoder real implementations ⏸
+## M4 — Encoder ✅
 
-**Goal:** Replace stub `encode()`/`decode()` with real libopus calls.
+**Completed in v0.1.0-alpha.3 (this release).**
 
-### Tasks
+- `opus_core::OpusEncoder::encode(&[i16]) -> OpusResult<Vec<u8>>` calling
+  `opus_encode`, with the output buffer truncated to the returned length.
+- Frame-size validation scaled to the configured sample rate (2.5/5/10/20/40/60
+  ms). KryxJS validates what it knows and reports the supported sizes; libopus
+  stays the final authority for everything else.
+- `OpusEncoderNative` napi class with a zero-copy `Buffer` → `&[i16]` boundary.
+  The napi layer owns byte-level validation and reinterpretation; the core
+  works in terms of typed samples.
+- TypeScript two-tier API: canonical `encode(frame)` plus convenience
+  `encodePcm(pcm)`, with `encode()` implemented on top of `encodePcm()`.
+- 8 new tests (39 total).
 
-- [ ] `opus-core::encoder::OpusEncoder::encode`:
-  - Use `sys::opus_encoder_create` in constructor
-  - Call `sys::opus_encode` with PCM samples
-  - Convert `application` enum to `OPUS_APPLICATION_*` constant
-  - Set bitrate via `opus_encoder_ctl(OPUS_SET_BITRATE_REQUEST, ...)`
-  - Add `Drop` impl calling `opus_encoder_destroy`
-- [ ] `opus-core::decoder::OpusDecoder::decode`:
-  - Use `sys::opus_decoder_create` in constructor
-  - Call `sys::opus_decode` for decompression
-  - Add `Drop` impl calling `opus_decoder_destroy`
-- [ ] `opus-node` — Update napi bindings to expose the real encode/decode
-- [ ] `src/encoder.ts`, `src/decoder.ts` — remove `throw CodecError('unsupported')`,
-  wire to the napi call
-
-**Estimated effort**: 1 day.
+**Format:** i16 first. `f32` (`opus_encode_float`) will be added later without
+breaking the existing API.
 
 ---
 
-## M5 — IETF test vectors ⏸
+## M5 — Decoder ⏸
 
-Download from https://opus-codec.org/testvectors/ and validate roundtrip.
+**Goal:** `OpusDecoder::decode()` turns Opus packets into i16 PCM.
 
-**Estimated effort**: 1 day.
-
----
-
-## M6 — Registry hookup with @kryxjs/codecs ⏸
-
-**Estimated effort**: 0.5 day.
-
----
-
-## M7 — Performance ⏸
-
-Criterion benchmarks, SIMD validation, comparison with ffmpeg baseline.
-
-**Estimated effort**: 1 day.
+- [ ] `decode(&[u8]) -> OpusResult<Vec<i16>>` calling `opus_decode`.
+- [ ] Output buffer sized for the largest frame (2880 samples/channel at 48 kHz).
+- [ ] `OpusDecoderNative` napi class mirroring the encoder's boundary handling.
+- [ ] TypeScript: canonical `decode(data)` returning a `DecodedFrame`, plus a
+      `decodePcm()` convenience.
+- [ ] Validate against a `.opus` file produced by a known tool (opusenc), which
+      isolates decoder correctness from our own encoder.
 
 ---
 
-## M8 — Stable release ⏸
+## M6 — Roundtrip ⏸
 
-Version bump alpha → beta → rc → 0.1.0. Update all docs.
-
-**Estimated effort**: 1 hour.
+PCM → encode → decode → PCM. Assert no errors, correct sample counts, and
+acceptable signal fidelity. Only meaningful once M4 and M5 are independently
+validated.
 
 ---
 
-## Total remaining
+## M7 — IETF test vectors ⏸
 
-| Milestone | Days remaining |
-|-----------|---------------|
-| M3 | 1.5 |
-| M4 | 1 |
-| M5 | 1 |
-| M6 | 0.5 |
-| M7 | 1 |
-| M8 | ~0 |
-| **Total** | **~5 days** |
+Validate against the official vectors at <https://opus-codec.org/testvectors/>.
+
+---
+
+## M8 — Registry hookup ⏸
+
+Wire the opus descriptor into `@kryxjs/codecs`' global registry so
+`createEncoder('opus')` works.
+
+---
+
+## M9 — Performance ⏸
+
+Criterion benchmarks, SIMD validation, comparison against an ffmpeg baseline.
+
+---
+
+## M10 — Stable release ⏸
+
+alpha → beta → rc → v0.1.0. Update all docs.

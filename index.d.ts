@@ -6,3 +6,32 @@
 export declare function version(): string
 export declare function libopusVersion(): string
 export declare function registerOpus(): void
+/**
+ * A native Opus encoder exposed to JavaScript.
+ *
+ * This is the low-level native handle. The TypeScript `OpusEncoder` class in
+ * `src/encoder.ts` wraps it to provide the canonical
+ * `encode(frame: DecodedFrame)` API plus the `encodePcm()` convenience.
+ */
+export declare class OpusEncoderNative {
+  /**
+   * Create a native encoder.
+   *
+   * `sampleRate` ∈ {8000,12000,16000,24000,48000}; `channels` ∈ {1,2};
+   * `application` ∈ {"voip","audio","lowdelay"}; `bitrate` in bits/sec.
+   */
+  constructor(sampleRate: number, channels: number, application: string, bitrate?: number | undefined | null)
+  /**
+   * Encode one frame of interleaved i16 PCM (raw little-endian bytes) into
+   * an Opus packet.
+   *
+   * `pcm` is a Buffer whose bytes are interleaved i16 samples. Length must
+   * be even (whole samples) and correspond to a legal Opus frame size for
+   * the configured sample rate.
+   */
+  encode(pcm: Buffer): Buffer
+  /** The configured channel count (1 or 2). */
+  get channels(): number
+  /** The configured sample rate in Hz. */
+  get sampleRate(): number
+}

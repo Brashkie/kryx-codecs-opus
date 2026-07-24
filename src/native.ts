@@ -10,10 +10,28 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 import * as native from '../index.js'
 
+/** The native OpusEncoder handle (M4). Mirrors `OpusEncoderNative` in Rust. */
+export interface NativeOpusEncoder {
+  encode(pcm: Buffer): Buffer
+  readonly channels: number
+  readonly sampleRate: number
+}
+
+/** Constructor signature for the native encoder class. */
+export interface NativeOpusEncoderCtor {
+  new (
+    sampleRate: number,
+    channels: number,
+    application: string,
+    bitrate?: number | undefined | null,
+  ): NativeOpusEncoder
+}
+
 interface NativeAddon {
   version: () => string
   libopusVersion: () => string
   registerOpus: () => void
+  OpusEncoderNative: NativeOpusEncoderCtor
 }
 
 const addon = native as unknown as NativeAddon
@@ -24,10 +42,7 @@ export function nativeAddonVersion(): string {
 }
 
 /**
- * Returns the linked libopus version string.
- *
- * Returns `"stub"` until M3 (Rust ↔ Zig FFI) is implemented.
- * Will return e.g. `"libopus 1.5.2"` once functional.
+ * Returns the linked libopus version string, e.g. `"libopus 1.5.2"`.
  */
 export function libopusVersion(): string {
   return addon.libopusVersion()
@@ -36,9 +51,12 @@ export function libopusVersion(): string {
 /**
  * Register Opus with the global `@kryxjs/codecs` registry.
  *
- * Currently a no-op until M6 (registry hookup) is implemented.
+ * Currently a no-op until M8 (registry hookup) is implemented.
  * The function exists today so the public API is stable.
  */
 export function nativeRegisterOpus(): void {
   addon.registerOpus()
 }
+
+/** The native encoder class constructor (M4). */
+export const OpusEncoderNative = addon.OpusEncoderNative

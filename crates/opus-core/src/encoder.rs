@@ -1,8 +1,8 @@
 //! Opus encoder.
 //!
-//! M3: `new()` creates a real libopus encoder via `opus_encoder_create` and
-//! `Drop` frees it via `opus_encoder_destroy`. The `encode()` method is still
-//! a stub returning `Unsupported` — real encoding lands in M4.
+//! M3: `new()` creates a real libopus encoder; `Drop` frees it.
+//! M4: `encode()` performs real encoding via `opus_encode` (PCM i16 → Opus).
+//! Takes `&[i16]` interleaved samples and returns the compressed packet.
 
 use crate::error::{OpusError, OpusResult};
 use crate::sys;
@@ -131,13 +131,92 @@ impl OpusEncoder {
         Ok(())
     }
 
-    /// Encode interleaved i16 PCM into an Opus packet.
+    /// Encode one frame of interleaved i16 PCM into an Opus packet.
     ///
-    /// STUB until M4. The real implementation will call `opus_encode`.
-    pub fn encode(&mut self, _input: &[u8]) -> OpusResult<Vec<u8>> {
-        Err(OpusError::unsupported(
-            "OpusEncoder::encode() not yet implemented — see docs/IMPLEMENTATION.md M4",
-        ))
+    /// `pcm` is interleaved signed 16-bit samples: for stereo, the layout is
+    /// `[L0, R0, L1, R1, ...]`. Its length must be `frame_size * channels`,
+    /// where `frame_size` (samples per channel) is one of Opus' legal frame
+    /// sizes for the configured sample rate (validated below).
+    ///
+    /// Returns the compressed Opus packet bytes on success. KryxJS validates
+    /// the frame size it knows about up-front (clear error message); libopus
+    /// remains the final authority for anything it detects internally.
+    pub fn encode(&mut self, pcm: &[i16]) -> OpusResult<Vec<u8>> {
+        let channels = self.channels as usize;
+        if channels == 0 {
+            return Err(OpusError::validation("encoder has zero channels"));
+        }
+        if pcm.is_empty() {
+            return Err(OpusError::validation("PCM input is empty"));
+        }
+        if pcm.len() % channels != 0 {
+            return Err(OpusError::validation(format!(
+                "PCM length {} is not a multiple of channel count {}",
+                pcm.len(),
+                channels
+            )));
+        }
+
+        // Samples per channel = the Opus "frame_size".
+        let frame_size = pcm.len() / channels;
+        self.validate_frame_size(frame_size)?;
+
+        // Opus recommends up to 4000 bytes for a single packet at the highest
+        // bitrates; this is the size used throughout the libopus docs/examples.
+        const MAX_PACKET: usize = 4000;
+        let mut out = vec![0u8; MAX_PACKET];
+
+        // SAFETY: `self.handle` is a live encoder. `pcm` points to
+        // `frame_size * channels` valid i16 samples. `out` has MAX_PACKET
+        // bytes of capacity. libopus reads frame_size samples per channel and
+        // writes at most max_data_bytes into `out`.
+        let ret = unsafe {
+            sys::opus_encode(
+                self.handle.as_ptr(),
+                pcm.as_ptr(),
+                frame_size as c_int,
+                out.as_mut_ptr(),
+                out.len() as i32,
+            )
+        };
+
+        if ret < 0 {
+            return Err(OpusError::from_opus_code(ret, "opus_encode failed"));
+        }
+
+        // `ret` is the number of bytes written to `out`.
+        out.truncate(ret as usize);
+        Ok(out)
+    }
+
+    /// Validate that `frame_size` (samples per channel) is a legal Opus frame
+    /// size for this encoder's sample rate.
+    ///
+    /// Opus permits frames of 2.5, 5, 10, 20, 40, and 60 ms. The sample counts
+    /// scale with the sample rate, e.g. at 48 kHz: 120/240/480/960/1920/2880.
+    fn validate_frame_size(&self, frame_size: usize) -> OpusResult<()> {
+        // Legal durations in milliseconds × 10 (to stay integer): 25 = 2.5 ms.
+        // samples = sample_rate * ms / 1000. Using tenths: sr * tenths / 10000.
+        const DURATION_TENTHS_MS: [u32; 6] = [25, 50, 100, 200, 400, 600];
+        let sr = self.sample_rate;
+        let valid: Vec<usize> = DURATION_TENTHS_MS
+            .iter()
+            .map(|&t| (sr as u64 * t as u64 / 10_000) as usize)
+            .collect();
+
+        if valid.contains(&frame_size) {
+            return Ok(());
+        }
+
+        Err(OpusError::validation(format!(
+            "invalid frame size: {frame_size} samples per channel at {sr} Hz. \
+             Supported frame sizes: {} samples (2.5/5/10/20/40/60 ms).",
+            valid
+                .iter()
+                .map(|n| n.to_string())
+                .collect::<Vec<_>>()
+                .join("/")
+        )))
     }
 }
 
@@ -202,13 +281,95 @@ mod tests {
     }
 
     #[test]
-    fn encode_returns_unsupported_for_now() {
+    fn encodes_silence_to_a_packet() {
+        // A 20 ms stereo frame at 48 kHz = 960 samples/channel = 1920 i16.
         let mut enc = OpusEncoder::new(48000, 2).unwrap();
-        let result = enc.encode(&[0u8; 100]);
-        assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err().kind,
-            crate::error::OpusErrorKind::Unsupported
+        let pcm = vec![0i16; 960 * 2];
+        let packet = enc.encode(&pcm).expect("encode should succeed");
+        // Even pure silence produces a small but non-empty Opus packet.
+        assert!(!packet.is_empty(), "packet should not be empty");
+        assert!(packet.len() < 4000, "packet should fit in the buffer");
+    }
+
+    #[test]
+    fn encodes_a_tone_mono() {
+        // 20 ms mono at 48 kHz = 960 samples.
+        let mut enc = OpusEncoder::new(48000, 1).unwrap();
+        let pcm: Vec<i16> = (0..960)
+            .map(|i| ((i as f64 * 0.1).sin() * 8000.0) as i16)
+            .collect();
+        let packet = enc.encode(&pcm).expect("encode should succeed");
+        assert!(!packet.is_empty());
+    }
+
+    #[test]
+    fn encodes_all_legal_frame_sizes_at_48k() {
+        let mut enc = OpusEncoder::new(48000, 1).unwrap();
+        for &fs in &[120usize, 240, 480, 960, 1920, 2880] {
+            let pcm = vec![0i16; fs];
+            let r = enc.encode(&pcm);
+            assert!(r.is_ok(), "frame size {fs} should be valid at 48k");
+        }
+    }
+
+    #[test]
+    fn rejects_invalid_frame_size() {
+        let mut enc = OpusEncoder::new(48000, 2).unwrap();
+        // 500 samples/channel is not a legal Opus frame size.
+        let pcm = vec![0i16; 500 * 2];
+        let err = enc.encode(&pcm).unwrap_err();
+        assert_eq!(err.kind, crate::error::OpusErrorKind::Validation);
+        assert!(err.message.contains("invalid frame size"));
+    }
+
+    #[test]
+    fn rejects_pcm_not_multiple_of_channels() {
+        let mut enc = OpusEncoder::new(48000, 2).unwrap();
+        // Odd length for stereo — can't split evenly across 2 channels.
+        let pcm = vec![0i16; 961];
+        let err = enc.encode(&pcm).unwrap_err();
+        assert_eq!(err.kind, crate::error::OpusErrorKind::Validation);
+    }
+
+    #[test]
+    fn rejects_empty_pcm() {
+        let mut enc = OpusEncoder::new(48000, 2).unwrap();
+        let err = enc.encode(&[]).unwrap_err();
+        assert_eq!(err.kind, crate::error::OpusErrorKind::Validation);
+    }
+
+    #[test]
+    fn frame_size_scales_with_sample_rate() {
+        // At 24 kHz, 20 ms = 480 samples (not 960).
+        let mut enc = OpusEncoder::new(24000, 1).unwrap();
+        assert!(enc.encode(&vec![0i16; 480]).is_ok(), "480 valid at 24k");
+        // 960 is NOT a valid frame size at 24 kHz (that would be 40ms=960, ok)
+        // Use an actually-invalid one: 500.
+        assert!(enc.encode(&vec![0i16; 500]).is_err(), "500 invalid at 24k");
+    }
+
+    #[test]
+    fn bitrate_affects_packet_size() {
+        // Higher bitrate → larger packet for the same tone.
+        let make_tone = || -> Vec<i16> {
+            (0..960)
+                .map(|i| ((i as f64 * 0.05).sin() * 10000.0) as i16)
+                .collect()
+        };
+
+        let mut low = OpusEncoder::new(48000, 1).unwrap();
+        low.set_bitrate(16000).unwrap();
+        let small = low.encode(&make_tone()).unwrap();
+
+        let mut high = OpusEncoder::new(48000, 1).unwrap();
+        high.set_bitrate(128000).unwrap();
+        let big = high.encode(&make_tone()).unwrap();
+
+        assert!(
+            big.len() >= small.len(),
+            "128k packet ({}) should be >= 16k packet ({})",
+            big.len(),
+            small.len()
         );
     }
 

@@ -9,7 +9,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-In progress: see [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) for M4–M10.
+In progress: see [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) for M5–M10.
+
+---
+
+## [0.1.0-alpha.3] — 2026-07-23
+
+**M4 complete: real Opus encoding (PCM i16 → Opus).**
+
+`OpusEncoder` now produces actual Opus packets. Decoding is still pending (M5).
+
+### Added (M4 — Encoder)
+
+- `opus_core::OpusEncoder::encode(&[i16]) -> OpusResult<Vec<u8>>` — real
+  encoding via `opus_encode`. Takes interleaved signed 16-bit samples and
+  returns the compressed Opus packet.
+- Frame-size validation: the samples-per-channel count is checked against the
+  legal Opus frame durations (2.5/5/10/20/40/60 ms) scaled to the configured
+  sample rate — e.g. 120/240/480/960/1920/2880 at 48 kHz. Invalid sizes fail
+  with a message listing the supported values, rather than a bare
+  `OPUS_BAD_ARG`. libopus remains the final authority for everything else.
+- `OpusEncoderNative` napi class exposing the encoder to JavaScript, with a
+  zero-copy `Buffer` → `&[i16]` boundary (falls back to an aligned copy for
+  unaligned buffers or big-endian platforms).
+- TypeScript two-tier API on `OpusEncoder`:
+  - `encode(frame: DecodedFrame): Promise<EncodedPacket>` — the canonical
+    `@kryxjs/codecs` framework API. Carries `pts`/`dts` through, sets
+    `isKeyframe: true` (Opus packets are independently decodable) and
+    `duration` to the number of samples per channel.
+  - `encodePcm(pcm): Promise<Buffer>` — convenience API accepting a `Buffer`,
+    `Int16Array`, or `Uint8Array`, without building a `DecodedFrame`.
+    `encode()` is implemented in terms of it.
+- `PcmInput` type exported from the package root.
+- 8 new encoder tests (39 total): silence, tone, every legal frame size,
+  invalid frame size, non-multiple-of-channels input, empty input, frame-size
+  scaling across sample rates, and bitrate affecting packet size.
+
+### Notes
+
+- PCM format is interleaved little-endian i16. `f32` support is planned for a
+  later release and will not break this API.
+- `OpusDecoder.decode()` still returns `unsupported` — that is M5.
+
+### Published to npm
+
+```bash
+npm install @kryxjs/codecs-opus@alpha
+```
 
 ---
 
@@ -138,7 +184,8 @@ libopus sources are vendored, but `encode()`/`decode()` are stubs.
 - `libopusVersion()` introspection (returns `"stub"` in alpha.0).
 - `nativeAddonVersion()` introspection.
 
-[Unreleased]: https://github.com/Brashkie/kryx-codecs-opus/compare/v0.1.0-alpha.2...HEAD
+[Unreleased]: https://github.com/Brashkie/kryx-codecs-opus/compare/v0.1.0-alpha.3...HEAD
+[0.1.0-alpha.3]: https://github.com/Brashkie/kryx-codecs-opus/compare/v0.1.0-alpha.2...v0.1.0-alpha.3
 [0.1.0-alpha.2]: https://github.com/Brashkie/kryx-codecs-opus/compare/v0.1.0-alpha.1...v0.1.0-alpha.2
 [0.1.0-alpha.1]: https://github.com/Brashkie/kryx-codecs-opus/compare/v0.1.0-alpha.0...v0.1.0-alpha.1
 [0.1.0-alpha.0]: https://github.com/Brashkie/kryx-codecs-opus/releases/tag/v0.1.0-alpha.0

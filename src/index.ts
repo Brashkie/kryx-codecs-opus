@@ -4,41 +4,45 @@
  * Opus encoder/decoder for the Kryx ecosystem. Backed by libopus 1.5.2 via
  * a Zig FFI shim.
  *
- * ## Status (M3 — 0.1.0-alpha.2)
+ * ## Status (M4 — in progress)
  *
  * - ✅ M1: libopus 1.5.2 vendored (`vendor/libopus/`).
  * - ✅ M2: Zig compiles libopus, Rust links it, FFI verified.
- *   `libopusVersion()` returns the real version string (e.g. "libopus 1.5.2").
- * - ✅ M3: full FFI surface (hand-written). Encoder/decoder create real
- *   libopus states and free them on drop; `set_bitrate` works.
- * - ⏸ M4: real encode (PCM i16 → Opus).
- * - ⏸ M5: real decode (Opus → PCM i16).
+ * - ✅ M3: full FFI surface; encoder/decoder create/free real libopus states.
+ * - ✅ M4: real encode (PCM i16 → Opus) via `OpusEncoder.encode()` /
+ *   `encodePcm()`.
+ * - ⏸ M5: real decode (Opus → PCM i16) — `OpusDecoder.decode()` still stub.
  *
  * See docs/IMPLEMENTATION.md for the milestone roadmap.
  *
- * ⚠ ALPHA: `OpusEncoder.encode()` and `OpusDecoder.decode()` still throw
- * `CodecError('unsupported')`. Wait for beta.0 for a functional codec.
- *
  * @example
  * ```ts
- * import { libopusVersion, OpusEncoder } from '@kryxjs/codecs-opus'
+ * import { OpusEncoder } from '@kryxjs/codecs-opus'
  *
- * console.log(libopusVersion())  // → "libopus 1.5.2"  (M2+)
+ * const enc = new OpusEncoder({ sampleRate: 48000, channels: 2, bitrate: 128_000 })
  *
- * const enc = new OpusEncoder({ sampleRate: 48000, channels: 2 })
- * // await enc.encode(frame)  // ← Still throws in alpha.2; works in beta.0
+ * // Convenience API: raw i16 PCM → Opus packet.
+ * // 20 ms stereo @ 48 kHz = 960 samples/channel = 1920 i16 samples.
+ * const pcm = new Int16Array(1920) // your audio here
+ * const opusPacket = await enc.encodePcm(pcm)
+ *
+ * // Canonical framework API: DecodedFrame → EncodedPacket.
+ * const packet = await enc.encode({
+ *   payload: Buffer.from(pcm.buffer),
+ *   pts: 0, dts: 0, isKeyframe: true, duration: 0,
+ * })
  * ```
  */
 
 export { OpusDecoder } from './decoder'
-export { OpusEncoder } from './encoder'
+export { OpusEncoder, type PcmInput } from './encoder'
 export { OpusApplication } from './types'
 export type { OpusConfig } from './types'
 export { libopusVersion, nativeAddonVersion } from './native'
 export { registerOpus } from './register'
 
 /** Package version. */
-export const VERSION = '0.1.0-alpha.2' as const
+export const VERSION = '0.1.0-alpha.3' as const
 
 // Side-effect: register on import.
 import './register'

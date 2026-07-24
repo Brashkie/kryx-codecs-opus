@@ -1,6 +1,6 @@
 {
   "name": "@kryxjs/codecs-opus",
-  "version": "0.1.0-alpha.2",
+  "version": "0.1.0-alpha.3",
   "description": "Opus audio encoder/decoder for the Kryx multimedia ecosystem — bindings to libopus 1.5.2 via Zig FFI",
   "type": "commonjs",
   "main": "./dist/index.cjs",
@@ -108,13 +108,13 @@
     "@kryxjs/codecs": "^0.1.0"
   },
   "optionalDependencies": {
-    "@kryxjs/codecs-opus-win32-x64-msvc": "0.1.0-alpha.2",
-    "@kryxjs/codecs-opus-win32-arm64-msvc": "0.1.0-alpha.2",
-    "@kryxjs/codecs-opus-darwin-x64": "0.1.0-alpha.2",
-    "@kryxjs/codecs-opus-darwin-arm64": "0.1.0-alpha.2",
-    "@kryxjs/codecs-opus-linux-x64-gnu": "0.1.0-alpha.2",
-    "@kryxjs/codecs-opus-linux-x64-musl": "0.1.0-alpha.2",
-    "@kryxjs/codecs-opus-linux-arm64-gnu": "0.1.0-alpha.2"
+    "@kryxjs/codecs-opus-win32-x64-msvc": "0.1.0-alpha.3",
+    "@kryxjs/codecs-opus-win32-arm64-msvc": "0.1.0-alpha.3",
+    "@kryxjs/codecs-opus-darwin-x64": "0.1.0-alpha.3",
+    "@kryxjs/codecs-opus-darwin-arm64": "0.1.0-alpha.3",
+    "@kryxjs/codecs-opus-linux-x64-gnu": "0.1.0-alpha.3",
+    "@kryxjs/codecs-opus-linux-x64-musl": "0.1.0-alpha.3",
+    "@kryxjs/codecs-opus-linux-arm64-gnu": "0.1.0-alpha.3"
   },
   "devDependencies": {
     "@napi-rs/cli": "2.18.4",
