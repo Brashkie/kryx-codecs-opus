@@ -27,11 +27,24 @@ export interface NativeOpusEncoderCtor {
   ): NativeOpusEncoder
 }
 
+/** The native OpusDecoder handle (M5). Mirrors `OpusDecoderNative` in Rust. */
+export interface NativeOpusDecoder {
+  decode(packet: Buffer): Buffer
+  readonly channels: number
+  readonly sampleRate: number
+}
+
+/** Constructor signature for the native decoder class. */
+export interface NativeOpusDecoderCtor {
+  new (sampleRate: number, channels: number): NativeOpusDecoder
+}
+
 interface NativeAddon {
   version: () => string
   libopusVersion: () => string
   registerOpus: () => void
   OpusEncoderNative: NativeOpusEncoderCtor
+  OpusDecoderNative: NativeOpusDecoderCtor
 }
 
 const addon = native as unknown as NativeAddon
@@ -60,3 +73,6 @@ export function nativeRegisterOpus(): void {
 
 /** The native encoder class constructor (M4). */
 export const OpusEncoderNative = addon.OpusEncoderNative
+
+/** The native decoder class constructor (M5). */
+export const OpusDecoderNative = addon.OpusDecoderNative

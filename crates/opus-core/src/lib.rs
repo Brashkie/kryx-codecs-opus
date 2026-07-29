@@ -22,6 +22,16 @@ pub mod encoder;
 pub mod error;
 pub mod sys;
 
+// Internal, crate-private. Not part of the public API — the future seed of a
+// dedicated @kryxjs/ogg crate. Only the interop tests (below) use it.
+#[cfg(test)]
+mod container;
+
+// M6 interoperability tests: decode real .opus fixtures produced by ffmpeg.
+// Lives inside the crate so it can reach the private `container` module.
+#[cfg(test)]
+mod interop_tests;
+
 pub use decoder::OpusDecoder;
 pub use encoder::{Application, OpusEncoder};
 pub use error::{OpusError, OpusErrorKind, OpusResult};

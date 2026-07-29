@@ -20,20 +20,21 @@ Bindings a [libopus 1.5.2](https://opus-codec.org) vía Zig FFI
 
 ---
 
-## ⚠️ Estado: ALPHA (v0.1.0-alpha.3)
+## Estado: BETA (v0.1.0-beta.0)
 
-**La codificación funciona.** `OpusEncoder` produce paquetes Opus reales a
-partir de PCM i16. La decodificación aún no está implementada —
-`OpusDecoder.decode()` sigue lanzando `CodecError('unsupported')` (M5).
+**Codec completo.** `OpusEncoder` produce paquetes Opus reales a partir de PCM
+i16, y `OpusDecoder` decodifica Opus de vuelta a PCM — incluyendo archivos
+`.opus` reales generados por ffmpeg, opusenc y navegadores. Se espera qe la API
+pública se mantenga estable hasta el `0.1.0`.
 
 | Milestone | Estado |
 |-----------|--------|
 | M1 — Vendoring libopus 1.5.2 | ✅ Hecho |
 | M2 — Zig build + FFI verificado | ✅ Hecho |
 | M3 — FFI completo + create/destroy | ✅ Hecho |
-| M4 — Encoder (encode) | ✅ Hecho (este release) |
-| M5 — Decoder (decode) | ⏸ Pendiente |
-| M6 — Validación roundtrip | ⏸ Pendiente |
+| M4 — Encoder (encode) | ✅ Hecho |
+| M5 — Decoder (decode) | ✅ Hecho |
+| M6 — Roundtrip + interoperabilidad | ✅ Hecho (este release) |
 | M7 — Vectores de prueba IETF | ⏸ Pendiente |
 | M8 — Registración con codec registry | ⏸ Pendiente |
 | M9 — Validación de performance | ⏸ Pendiente |
@@ -46,29 +47,29 @@ Ver [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) para el roadmap completo.
 ## Instalación
 
 ```bash
-# Los releases alpha requieren la tag @alpha explícita
-npm install @kryxjs/codecs-opus@alpha
+npm install @kryxjs/codecs-opus@beta
 ```
 
 > El binario nativo correcto para tu plataforma se instala automáticamente
 > vía `optionalDependencies`. Plataformas soportadas: Windows x64/arm64,
 > macOS x64/arm64, Linux x64 (gnu/musl), Linux arm64 (gnu).
 
-### ¿Por qué necesito `@alpha`?
+### ¿Por qué `@beta`?
 
-No qeremos qe `npm install @kryxjs/codecs-opus` (sin tag) le dé a los usuarios
-un codec a medio terminar — la decodificación todavía no está implementada.
-La opt-in explícita vía `@alpha` protege a los usuarios mientras el ecosistema
-puede ver qe el paquete existe.
+El codec está completo y es interoperable, pero faltan algunos milestones antes
+del `0.1.0` estable (vectores de prueba oficiales, registro de codecs, trabajo
+de performance). La tag `@beta` te deja usar el codec terminado ahora, mientras
+`latest` queda reservado para el release estable. No se espera qe la API cambie
+antes del `0.1.0`.
 
 ---
 
 ## Uso
 
-### Codificación (funciona en alpha.3)
+### Codificar y decodificar (round trip)
 
 ```ts
-import { OpusEncoder, OpusApplication } from '@kryxjs/codecs-opus'
+import { OpusEncoder, OpusDecoder, OpusApplication } from '@kryxjs/codecs-opus'
 
 const enc = new OpusEncoder({
   sampleRate: 48000,
@@ -76,12 +77,13 @@ const enc = new OpusEncoder({
   application: OpusApplication.Audio,
   bitrate: 128_000,
 })
+const dec = new OpusDecoder({ sampleRate: 48000, channels: 2 })
 
-// API de conveniencia — PCM i16 intercalado entra, paquete Opus sale.
+// API de conveniencia — PCM i16 intercalado entra, paquete Opus sale, y vuelve.
 // Un frame estéreo de 20 ms a 48 kHz = 960 muestras/canal = 1920 i16.
 const pcm = new Int16Array(1920) // tu audio aquí
-const packetBytes = await enc.encodePcm(pcm)
-console.log(packetBytes.length) // → paquete Opus comprimido
+const packetBytes = await enc.encodePcm(pcm)     // → paquete Opus comprimido
+const decoded = await dec.decodePcm(packetBytes) // → bytes PCM i16 intercalados
 ```
 
 ### API canónica del framework
@@ -100,10 +102,15 @@ const packet = await enc.encode({
 packet.payload    // Buffer — el paquete Opus comprimido
 packet.duration   // 960 — muestras por canal
 packet.isKeyframe // true — cada paquete Opus se decodifica independientemente
+
+// Decodificar un paquete de vuelta a un frame:
+const frame = await dec.decode(packet)
+frame.payload    // Buffer — PCM i16 LE intercalado
+frame.duration   // 960 — muestras por canal
 ```
 
-`encode()` está implementado sobre `encodePcm()`, así qe ambos comparten el
-mismo camino nativo.
+`encode()`/`decode()` están implementados sobre `encodePcm()`/`decodePcm()`,
+así qe ambos niveles comparten el mismo camino nativo.
 
 ### Formato PCM y tamaños de frame
 
@@ -126,13 +133,14 @@ Estos valores escalan con la frecuencia de muestreo (a 24 kHz, 20 ms son 480
 muestras). Pasar un tamaño inválido lanza un `CodecError` con la lista de
 valores soportados.
 
-### Decodificación (todavía no — M5)
+### Leer archivos `.opus`
 
-```ts
-// ❌ Aún lanza en alpha.3:
-// const frame = await dec.decode(packet)
-//   → CodecError('unsupported')
-```
+Los paquetes Opus del mundo real suelen venir envueltos en un contenedor Ogg
+(archivos `.opus` de ffmpeg, opusenc, navegadores). `OpusDecoder.decode()` toma
+un **paquete Opus crudo**, así qe primero desencapsulás el Ogg y después
+decodificás cada paquete. Los tests de interoperabilidad de este repo muestran
+el flujo con archivos generados por ffmpeg. (Decodificá a 48 kHz — la tasa
+nativa de Opus.)
 
 ### Introspección
 

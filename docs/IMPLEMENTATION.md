@@ -9,11 +9,11 @@ Track from skeleton (v0.1.0-alpha.0) to functional (v0.1.0).
 | **M1 — Vendoring libopus 1.5.2** | ✅ Done | v0.1.0-alpha.0 |
 | **M2 — Zig build + link verified** | ✅ Done | v0.1.0-alpha.1 |
 | **M3 — Full FFI + create/destroy** | ✅ Done | v0.1.0-alpha.2 |
-| **M4 — Encoder (encode)** | ✅ Done | v0.1.0-alpha.3 (current) |
-| M5 — Decoder (decode) | ⏸ Pending | v0.1.0-beta.0 |
-| M6 — Roundtrip validation | ⏸ Pending | v0.1.0-beta.1 |
-| M7 — IETF test vectors | ⏸ Pending | v0.1.0-beta.2 |
-| M8 — Registry hookup | ⏸ Pending | v0.1.0-beta.3 |
+| **M4 — Encoder (encode)** | ✅ Done | v0.1.0-alpha.3 |
+| **M5 — Decoder (decode)** | ✅ Done | v0.1.0-beta.0 |
+| **M6 — Roundtrip + interoperability** | ✅ Done | v0.1.0-beta.0 (current) |
+| M7 — IETF test vectors | ⏸ Pending | v0.1.0-beta.1 |
+| M8 — Registry hookup | ⏸ Pending | v0.1.0-beta.2 |
 | M9 — Performance | ⏸ Pending | v0.1.0-rc.0 |
 | M10 — Stable release | ⏸ Pending | v0.1.0 |
 
@@ -59,7 +59,7 @@ handling, M4 the encoder, M5 the decoder, M6 the two together.
 
 ## M4 — Encoder ✅
 
-**Completed in v0.1.0-alpha.3 (this release).**
+**Completed in v0.1.0-alpha.3.**
 
 - `opus_core::OpusEncoder::encode(&[i16]) -> OpusResult<Vec<u8>>` calling
   `opus_encode`, with the output buffer truncated to the returned length.
@@ -78,25 +78,38 @@ breaking the existing API.
 
 ---
 
-## M5 — Decoder ⏸
+## M5 — Decoder ✅
 
-**Goal:** `OpusDecoder::decode()` turns Opus packets into i16 PCM.
+**Completed in v0.1.0-beta.0.**
 
-- [ ] `decode(&[u8]) -> OpusResult<Vec<i16>>` calling `opus_decode`.
-- [ ] Output buffer sized for the largest frame (2880 samples/channel at 48 kHz).
-- [ ] `OpusDecoderNative` napi class mirroring the encoder's boundary handling.
-- [ ] TypeScript: canonical `decode(data)` returning a `DecodedFrame`, plus a
-      `decodePcm()` convenience.
-- [ ] Validate against a `.opus` file produced by a known tool (opusenc), which
-      isolates decoder correctness from our own encoder.
+- `OpusDecoder::decode(&[u8]) -> OpusResult<Vec<i16>>` calling `opus_decode`,
+  with a max-frame output buffer (60 ms at the configured rate) truncated to
+  what libopus produced. Symmetric to the encoder: core works in typed samples
+  (`Vec<i16>`), the napi layer translates to/from little-endian bytes.
+- `OpusDecoderNative` napi class mirroring the encoder's boundary handling.
+- TypeScript: canonical `decode(packet)` returning a `DecodedFrame`, plus a
+  `decodePcm()` convenience.
+- Validated via encode→decode roundtrip (see M6).
 
 ---
 
-## M6 — Roundtrip ⏸
+## M6 — Roundtrip + interoperability ✅
 
-PCM → encode → decode → PCM. Assert no errors, correct sample counts, and
-acceptable signal fidelity. Only meaningful once M4 and M5 are independently
-validated.
+**Completed in v0.1.0-beta.0.**
+
+Two levels:
+
+- **Level 1 — Robust roundtrip.** PCM → encode → decode → PCM, validated with
+  an energy/RMS metric (delay-invariant, so no fragile time-alignment). Covers
+  mono/stereo, multiple sample rates, silence, bitrate effect on fidelity, and
+  stability across consecutive frames.
+- **Level 2 — Interoperability.** The decoder reads real `.opus` files produced
+  by ffmpeg/opusenc. A minimal, zero-dependency Ogg reader
+  (`src/container/ogg.rs`, crate-private) de-encapsulates the container and
+  hands raw Opus packets to the decoder. Validated against 7 committed fixtures.
+
+The Ogg reader is deliberately minimal (read-only, no CRC — a documented
+extension point) and crate-private: the seed of a future `@kryxjs/ogg`.
 
 ---
 

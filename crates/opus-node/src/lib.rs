@@ -20,7 +20,9 @@
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-use opus_core::{Application as CoreApplication, OpusEncoder as CoreEncoder};
+use opus_core::{
+    Application as CoreApplication, OpusDecoder as CoreDecoder, OpusEncoder as CoreEncoder,
+};
 
 #[napi]
 pub fn version() -> String {
@@ -153,6 +155,65 @@ impl OpusEncoderNative {
         };
 
         Ok(Buffer::from(packet))
+    }
+
+    /// The configured channel count (1 or 2).
+    #[napi(getter)]
+    pub fn channels(&self) -> u32 {
+        self.channels as u32
+    }
+
+    /// The configured sample rate in Hz.
+    #[napi(getter)]
+    pub fn sample_rate(&self) -> u32 {
+        self.inner.sample_rate()
+    }
+}
+
+/// A native Opus decoder exposed to JavaScript.
+///
+/// The low-level native handle. The TypeScript `OpusDecoder` class in
+/// `src/decoder.ts` wraps it to provide the canonical
+/// `decode(packet: EncodedPacket)` API plus the `decodePcm()` convenience.
+#[napi(js_name = "OpusDecoderNative")]
+pub struct OpusDecoderNative {
+    inner: CoreDecoder,
+    channels: u16,
+}
+
+#[napi]
+impl OpusDecoderNative {
+    /// Create a native decoder.
+    ///
+    /// `sampleRate` ∈ {8000,12000,16000,24000,48000}; `channels` ∈ {1,2}.
+    #[napi(constructor)]
+    pub fn new(sample_rate: u32, channels: u32) -> Result<Self> {
+        let ch = channels as u16;
+        let inner = CoreDecoder::new(sample_rate, ch).map_err(to_napi_err)?;
+        Ok(Self {
+            inner,
+            channels: ch,
+        })
+    }
+
+    /// Decode one Opus packet into interleaved i16 PCM, returned as raw
+    /// little-endian bytes (2 bytes per sample).
+    ///
+    /// The core produces `Vec<i16>`; this napi layer is responsible for
+    /// turning the typed samples into the byte `Buffer` the JS side expects.
+    #[napi]
+    pub fn decode(&mut self, packet: Buffer) -> Result<Buffer> {
+        let bytes: &[u8] = packet.as_ref();
+        let samples = self.inner.decode(bytes).map_err(to_napi_err)?;
+
+        // Convert Vec<i16> → little-endian bytes. This copy is the boundary's
+        // job (the core stays in terms of typed samples). We build the byte
+        // buffer explicitly so the output is little-endian on every platform.
+        let mut out = Vec::with_capacity(samples.len() * 2);
+        for s in samples {
+            out.extend_from_slice(&s.to_le_bytes());
+        }
+        Ok(Buffer::from(out))
     }
 
     /// The configured channel count (1 or 2).

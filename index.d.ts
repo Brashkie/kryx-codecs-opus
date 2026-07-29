@@ -35,3 +35,30 @@ export declare class OpusEncoderNative {
   /** The configured sample rate in Hz. */
   get sampleRate(): number
 }
+/**
+ * A native Opus decoder exposed to JavaScript.
+ *
+ * The low-level native handle. The TypeScript `OpusDecoder` class in
+ * `src/decoder.ts` wraps it to provide the canonical
+ * `decode(packet: EncodedPacket)` API plus the `decodePcm()` convenience.
+ */
+export declare class OpusDecoderNative {
+  /**
+   * Create a native decoder.
+   *
+   * `sampleRate` ∈ {8000,12000,16000,24000,48000}; `channels` ∈ {1,2}.
+   */
+  constructor(sampleRate: number, channels: number)
+  /**
+   * Decode one Opus packet into interleaved i16 PCM, returned as raw
+   * little-endian bytes (2 bytes per sample).
+   *
+   * The core produces `Vec<i16>`; this napi layer is responsible for
+   * turning the typed samples into the byte `Buffer` the JS side expects.
+   */
+  decode(packet: Buffer): Buffer
+  /** The configured channel count (1 or 2). */
+  get channels(): number
+  /** The configured sample rate in Hz. */
+  get sampleRate(): number
+}

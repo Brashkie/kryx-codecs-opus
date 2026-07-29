@@ -310,9 +310,10 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { version, libopusVersion, registerOpus, OpusEncoderNative } = nativeBinding
+const { version, libopusVersion, registerOpus, OpusEncoderNative, OpusDecoderNative } = nativeBinding
 
 module.exports.version = version
 module.exports.libopusVersion = libopusVersion
 module.exports.registerOpus = registerOpus
 module.exports.OpusEncoderNative = OpusEncoderNative
+module.exports.OpusDecoderNative = OpusDecoderNative

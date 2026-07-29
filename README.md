@@ -20,20 +20,21 @@ Bindings to [libopus 1.5.2](https://opus-codec.org) via Zig FFI
 
 ---
 
-## ⚠️ Status: ALPHA (v0.1.0-alpha.3)
+## Status: BETA (v0.1.0-beta.0)
 
-**Encoding works.** `OpusEncoder` produces real Opus packets from i16 PCM.
-Decoding is not implemented yet — `OpusDecoder.decode()` still throws
-`CodecError('unsupported')` (M5).
+**Complete codec.** `OpusEncoder` produces real Opus packets from i16 PCM, and
+`OpusDecoder` decodes Opus back to PCM — including real `.opus` files produced
+by ffmpeg, opusenc, and browsers. The public API is expected to stay stable
+through to `0.1.0`.
 
 | Milestone | Status |
 |-----------|--------|
 | M1 — Vendor libopus 1.5.2 | ✅ Done |
 | M2 — Zig build + FFI verified | ✅ Done |
 | M3 — Full FFI + create/destroy | ✅ Done |
-| M4 — Encoder (encode) | ✅ Done (this release) |
-| M5 — Decoder (decode) | ⏸ Pending |
-| M6 — Roundtrip validation | ⏸ Pending |
+| M4 — Encoder (encode) | ✅ Done |
+| M5 — Decoder (decode) | ✅ Done |
+| M6 — Roundtrip + interoperability | ✅ Done (this release) |
 | M7 — IETF test vectors | ⏸ Pending |
 | M8 — Codec registry hookup | ⏸ Pending |
 | M9 — Performance validation | ⏸ Pending |
@@ -46,28 +47,28 @@ See [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) for the full roadmap.
 ## Install
 
 ```bash
-# Alpha releases require explicit @alpha tag
-npm install @kryxjs/codecs-opus@alpha
+npm install @kryxjs/codecs-opus@beta
 ```
 
 > The right native binary for your platform is installed automatically via
 > `optionalDependencies`. Supported: Windows x64/arm64, macOS x64/arm64,
 > Linux x64 (gnu/musl), Linux arm64 (gnu).
 
-### Why do I need `@alpha`?
+### Why `@beta`?
 
-We don't want `npm install @kryxjs/codecs-opus` (without any tag) to give
-users a half-finished codec — decoding isn't implemented yet. Explicit opt-in
-via `@alpha` protects users while letting the ecosystem see the package exists.
+The codec is complete and interoperable, but a few milestones remain before the
+stable `0.1.0` (official test vectors, registry hookup, performance work). The
+`@beta` tag lets you use the finished codec now while `latest` stays reserved
+for the stable release. The API is not expected to change before `0.1.0`.
 
 ---
 
 ## Usage
 
-### Encoding (works in alpha.3)
+### Encode and decode (round trip)
 
 ```ts
-import { OpusEncoder, OpusApplication } from '@kryxjs/codecs-opus'
+import { OpusEncoder, OpusDecoder, OpusApplication } from '@kryxjs/codecs-opus'
 
 const enc = new OpusEncoder({
   sampleRate: 48000,
@@ -75,12 +76,13 @@ const enc = new OpusEncoder({
   application: OpusApplication.Audio,
   bitrate: 128_000,
 })
+const dec = new OpusDecoder({ sampleRate: 48000, channels: 2 })
 
-// Convenience API — raw interleaved i16 PCM in, Opus packet out.
+// Convenience API — raw interleaved i16 PCM in, Opus packet out, and back.
 // A 20 ms stereo frame at 48 kHz = 960 samples/channel = 1920 i16 samples.
 const pcm = new Int16Array(1920) // your audio here
-const packetBytes = await enc.encodePcm(pcm)
-console.log(packetBytes.length) // → compressed Opus packet
+const packetBytes = await enc.encodePcm(pcm)   // → compressed Opus packet
+const decoded = await dec.decodePcm(packetBytes) // → interleaved i16 PCM bytes
 ```
 
 ### Canonical framework API
@@ -99,10 +101,15 @@ const packet = await enc.encode({
 packet.payload    // Buffer — the compressed Opus packet
 packet.duration   // 960 — samples per channel
 packet.isKeyframe // true — every Opus packet decodes independently
+
+// Decode a packet back into a frame:
+const frame = await dec.decode(packet)
+frame.payload    // Buffer — interleaved i16 LE PCM
+frame.duration   // 960 — samples per channel
 ```
 
-`encode()` is implemented in terms of `encodePcm()`, so both share the same
-native path.
+`encode()`/`decode()` are implemented in terms of `encodePcm()`/`decodePcm()`,
+so both tiers share the same native path.
 
 ### PCM format and frame sizes
 
@@ -124,13 +131,13 @@ or 60 ms. At 48 kHz that is:
 These scale with the sample rate (at 24 kHz, 20 ms is 480 samples). Passing an
 invalid size throws a `CodecError` listing the supported values.
 
-### Decoding (not yet — M5)
+### Reading `.opus` files
 
-```ts
-// ❌ Still throws in alpha.3:
-// const frame = await dec.decode(packet)
-//   → CodecError('unsupported')
-```
+Opus packets in the wild are usually wrapped in an Ogg container (`.opus`
+files from ffmpeg, opusenc, browsers). `OpusDecoder.decode()` takes a **raw
+Opus packet**, so you de-encapsulate the Ogg first, then decode each packet.
+The interoperability tests in this repo demonstrate the flow against files
+produced by ffmpeg. (Decode at 48 kHz — Opus' native rate.)
 
 ### Introspection
 
