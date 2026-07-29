@@ -20,7 +20,7 @@ import { CodecError } from '@kryxjs/codecs'
 
 describe('@kryxjs/codecs-opus — public API surface', () => {
   it('VERSION matches package.json', () => {
-    expect(VERSION).toBe('0.1.0-alpha.3')
+    expect(VERSION).toBe('0.1.0-beta.0')
   })
 
   it('nativeAddonVersion returns non-empty string', () => {
@@ -73,9 +73,17 @@ describe('OpusDecoder', () => {
     expect(new OpusDecoder().name).toBe('opus')
   })
 
-  it('decode() throws CodecError (skeleton)', async () => {
+  it('decodePcm rejects a garbage packet with CodecError', async () => {
     const d = new OpusDecoder()
-    await expect(d.decode(Buffer.from([0]))).rejects.toBeInstanceOf(CodecError)
+    // Random bytes are not a valid Opus packet.
+    await expect(d.decodePcm(Buffer.from([0xff, 0x00, 0xab]))).rejects.toBeInstanceOf(CodecError)
+  })
+
+  it('decode rejects an empty packet with CodecError', async () => {
+    const d = new OpusDecoder()
+    await expect(
+      d.decode({ payload: Buffer.alloc(0), pts: 0, dts: 0, isKeyframe: true, duration: 0 }),
+    ).rejects.toBeInstanceOf(CodecError)
   })
 
   it('flush() returns empty array', async () => {
