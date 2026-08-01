@@ -94,7 +94,10 @@ impl OpusDecoder {
             )
         };
         if ret != sys::OPUS_OK {
-            return Err(OpusError::from_opus_code(ret, "OPUS_GET_FINAL_RANGE failed"));
+            return Err(OpusError::from_opus_code(
+                ret,
+                "OPUS_GET_FINAL_RANGE failed",
+            ));
         }
         Ok(value)
     }

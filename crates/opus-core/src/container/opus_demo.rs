@@ -44,14 +44,10 @@ pub fn parse_demo_packets(data: &[u8]) -> io::Result<Vec<DemoPacket>> {
             ));
         }
 
-        let len = u32::from_be_bytes([data[pos], data[pos + 1], data[pos + 2], data[pos + 3]])
-            as usize;
-        let expected_final_range = u32::from_be_bytes([
-            data[pos + 4],
-            data[pos + 5],
-            data[pos + 6],
-            data[pos + 7],
-        ]);
+        let len =
+            u32::from_be_bytes([data[pos], data[pos + 1], data[pos + 2], data[pos + 3]]) as usize;
+        let expected_final_range =
+            u32::from_be_bytes([data[pos + 4], data[pos + 5], data[pos + 6], data[pos + 7]]);
         pos += 8;
 
         // A length of 0xFFFFFFFF marks a lost packet in some vector sets; we

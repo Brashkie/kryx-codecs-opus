@@ -87,11 +87,17 @@ fn check_vector(name: &str) -> bool {
                 .iter()
                 .filter(|&&s| s == i16::MAX || s == i16::MIN)
                 .count();
-            assert!(clipped < pcm.len(), "{name}: packet {i} decoded to all-clipped PCM");
+            assert!(
+                clipped < pcm.len(),
+                "{name}: packet {i} decoded to all-clipped PCM"
+            );
         }
     }
 
-    eprintln!("PASS {name}: {} packets, all final ranges match", packets.len());
+    eprintln!(
+        "PASS {name}: {} packets, all final ranges match",
+        packets.len()
+    );
     true
 }
 
@@ -129,7 +135,10 @@ fn rfc8251_vectors_conform() {
             fixtures_dir().display()
         );
     } else {
-        eprintln!("RFC 8251 conformance: {ran}/{} vectors verified.", vectors.len());
+        eprintln!(
+            "RFC 8251 conformance: {ran}/{} vectors verified.",
+            vectors.len()
+        );
     }
 }
 
