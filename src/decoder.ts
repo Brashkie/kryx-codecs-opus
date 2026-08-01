@@ -80,8 +80,10 @@ export class OpusDecoder {
 
     return {
       payload: pcmBytes,
-      pts: packet.pts,
-      dts: packet.dts,
+      // EncodedPacket.pts/dts are optional (omitted = "unset"); a DecodedFrame
+      // always carries a concrete timestamp, so default to 0 when absent.
+      pts: packet.pts ?? 0,
+      dts: packet.dts ?? 0,
       isKeyframe: true,
       duration,
     }

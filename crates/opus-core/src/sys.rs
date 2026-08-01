@@ -61,6 +61,13 @@ pub const OPUS_GET_BITRATE_REQUEST: c_int = 4003;
 pub const OPUS_SET_COMPLEXITY_REQUEST: c_int = 4010;
 pub const OPUS_SET_SIGNAL_REQUEST: c_int = 4024;
 
+// CTL request codes usable on both encoder and decoder.
+// OPUS_GET_FINAL_RANGE returns the final state of the range coder as a u32.
+// Two conformant Opus implementations decoding the same packet MUST produce
+// the same final range — the mechanism the RFC test vectors use to check
+// bit-exact conformance. Takes an `*mut u32` out-param.
+pub const OPUS_GET_FINAL_RANGE_REQUEST: c_int = 4031;
+
 // Special CTL values.
 pub const OPUS_AUTO: c_int = -1000;
 pub const OPUS_BITRATE_MAX: c_int = -1;
@@ -136,6 +143,14 @@ extern "C" {
         frame_size: c_int,
         decode_fec: c_int,
     ) -> c_int;
+
+    /// Perform a control request on the decoder.
+    ///
+    /// Variadic in C, exactly like `opus_encoder_ctl` — and it MUST be declared
+    /// variadic here for the same reason (the aarch64 calling convention passes
+    /// variadic args differently). We use it for OPUS_GET_FINAL_RANGE, which
+    /// takes a single trailing `*mut u32` out-param.
+    pub fn opus_decoder_ctl(st: *mut OpusDecoder, request: c_int, ...) -> c_int;
 
     /// Free a decoder state created by opus_decoder_create.
     pub fn opus_decoder_destroy(st: *mut OpusDecoder);

@@ -75,6 +75,30 @@ impl OpusDecoder {
         self.channels
     }
 
+    /// The final state of the range decoder after the last decoded packet.
+    ///
+    /// Two conformant Opus decoders that decode the same packet(s) produce the
+    /// same final range. The RFC test vectors ship an expected value per
+    /// packet, so comparing this against them checks bit-exact conformance far
+    /// more strongly than an energy/PCM comparison would. Returns the value
+    /// from `OPUS_GET_FINAL_RANGE`.
+    pub fn final_range(&mut self) -> OpusResult<u32> {
+        let mut value: u32 = 0;
+        // SAFETY: `self.handle` is a live decoder. OPUS_GET_FINAL_RANGE writes
+        // a single u32 through the trailing out-pointer; we pass `&mut value`.
+        let ret = unsafe {
+            sys::opus_decoder_ctl(
+                self.handle.as_ptr(),
+                sys::OPUS_GET_FINAL_RANGE_REQUEST,
+                &mut value as *mut u32,
+            )
+        };
+        if ret != sys::OPUS_OK {
+            return Err(OpusError::from_opus_code(ret, "OPUS_GET_FINAL_RANGE failed"));
+        }
+        Ok(value)
+    }
+
     /// Decode one Opus packet into interleaved i16 PCM.
     ///
     /// Returns the decoded interleaved samples (`Vec<i16>`): for stereo the
@@ -91,9 +115,13 @@ impl OpusDecoder {
 
         let channels = self.channels as usize;
 
-        // Largest Opus frame is 60 ms. samples_per_channel at 48 kHz = 2880;
-        // it scales with the sample rate (sr * 60 / 1000 = sr * 3 / 50).
-        let max_samples_per_channel = (self.sample_rate as usize * 3) / 50;
+        // A single Opus packet can carry up to 120 ms of audio (a multi-frame
+        // "code 3" packet — several 60 ms frames combined). The output buffer
+        // must hold that worst case or opus_decode returns OPUS_BUFFER_TOO_SMALL.
+        // 120 ms at 48 kHz = 5760 samples/channel; it scales with the sample
+        // rate (sr * 120 / 1000 = sr * 6 / 50). This is the value libopus'
+        // own API docs recommend for a safe decode buffer.
+        let max_samples_per_channel = (self.sample_rate as usize * 6) / 50;
         let capacity = max_samples_per_channel * channels;
         let mut out = vec![0i16; capacity];
 

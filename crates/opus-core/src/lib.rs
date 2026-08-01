@@ -32,6 +32,11 @@ mod container;
 #[cfg(test)]
 mod interop_tests;
 
+// M7 conformance tests: decode the official IETF/RFC test vectors and check
+// the range-coder final state per packet (bit-exact conformance).
+#[cfg(test)]
+mod rfc_vectors_tests;
+
 pub use decoder::OpusDecoder;
 pub use encoder::{Application, OpusEncoder};
 pub use error::{OpusError, OpusErrorKind, OpusResult};

@@ -17,10 +17,11 @@ import {
   registerOpus,
 } from '../src'
 import { CodecError } from '@kryxjs/codecs'
+import pkg from '../package.json'
 
 describe('@kryxjs/codecs-opus — public API surface', () => {
   it('VERSION matches package.json', () => {
-    expect(VERSION).toBe('0.1.0-beta.0')
+    expect(VERSION).toBe(pkg.version)
   })
 
   it('nativeAddonVersion returns non-empty string', () => {
