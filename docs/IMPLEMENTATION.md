@@ -11,9 +11,9 @@ Track from skeleton (v0.1.0-alpha.0) to functional (v0.1.0).
 | **M3 — Full FFI + create/destroy** | ✅ Done | v0.1.0-alpha.2 |
 | **M4 — Encoder (encode)** | ✅ Done | v0.1.0-alpha.3 |
 | **M5 — Decoder (decode)** | ✅ Done | v0.1.0-beta.0 |
-| **M6 — Roundtrip + interoperability** | ✅ Done | v0.1.0-beta.0 (current) |
-| M7 — IETF test vectors | ⏸ Pending | v0.1.0-beta.1 |
-| M8 — Registry hookup | ⏸ Pending | v0.1.0-beta.2 |
+| **M6 — Roundtrip + interoperability** | ✅ Done | v0.1.0-beta.0 |
+| **M7 — RFC 8251 conformance** | ✅ Done | v0.1.0-beta.1 (current) |
+| **M8 — Registry hookup** | ✅ Done | v0.1.0-beta.1 (current) |
 | M9 — Performance | ⏸ Pending | v0.1.0-rc.0 |
 | M10 — Stable release | ⏸ Pending | v0.1.0 |
 
@@ -113,16 +113,44 @@ extension point) and crate-private: the seed of a future `@kryxjs/ogg`.
 
 ---
 
-## M7 — IETF test vectors ⏸
+## M7 — RFC 8251 conformance ✅
 
-Validate against the official vectors at <https://opus-codec.org/testvectors/>.
+**Completed in v0.1.0-beta.1.**
+
+- `OPUS_GET_FINAL_RANGE` exposed via `opus_decoder_ctl` (FFI) and
+  `OpusDecoder::final_range()`. Two conformant decoders produce the same
+  range-coder final state per packet — the RFC's own bit-exact self-check,
+  far stronger (and simpler) than reimplementing `opus_compare`'s perceptual
+  metric.
+- `container/opus_demo.rs`: a minimal, crate-private reader for the
+  `opus_demo` framing (`[len:u32 BE][final_range:u32 BE][packet]`) the official
+  vectors use.
+- All 12 official RFC 8251 vectors decode with matching final range per packet.
+  Vectors committed under `tests/fixtures/ietf/` (deterministic, offline CI);
+  absent → tests skip.
+- Surfaced and fixed a latent decode-buffer bug (60 ms → 120 ms) that the
+  earlier fixtures never triggered.
+
+Reimplementing `opus_compare`'s perceptual comparison is intentionally deferred
+— the final-range check already proves conformance.
 
 ---
 
-## M8 — Registry hookup ⏸
+## M8 — Registry hookup ✅
 
-Wire the opus descriptor into `@kryxjs/codecs`' global registry so
-`createEncoder('opus')` works.
+**Completed in v0.1.0-beta.1.**
+
+- `registerOpus()` registers Opus with the `@kryxjs/codecs` plugin registry via
+  `registerCodec`, providing encoder/decoder factories and metadata (media
+  type, extensions, MIME types). Importing the package auto-registers, so
+  `createEncoder('opus')` / `createDecoder('opus')` resolve through the
+  framework.
+- The registry lives in the TS/SDK layer and stores JS factories — necessary
+  because `@kryxjs/codecs` and `@kryxjs/codecs-opus` are separate native addons
+  (separate dynamic libraries, separate Rust globals), so cross-addon
+  registration happens one level up in JS. This is the extensible plugin
+  pattern for every future `@kryxjs/*` codec package.
+- Requires `@kryxjs/codecs` ≥ 0.2.0.
 
 ---
 

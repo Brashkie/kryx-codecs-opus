@@ -9,7 +9,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-In progress: see [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) for M7–M10.
+In progress: see [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) for M9–M10.
+
+---
+
+## [0.1.0-beta.1] — 2026-07-31
+
+**RFC 8251 conformance + codec-registry integration.**
+
+The decoder is now verified bit-exact against the official IETF test vectors,
+and Opus plugs into the `@kryxjs/codecs` plugin registry so it can be used
+through the framework's `createEncoder` / `createDecoder`.
+
+### Added — M7 (RFC 8251 conformance)
+
+- `OPUS_GET_FINAL_RANGE` exposed through the FFI (`opus_decoder_ctl`) and a
+  `OpusDecoder::final_range()` accessor. Two conformant decoders produce the
+  same range-coder final state per packet — the RFC's own bit-exact
+  self-check.
+- A minimal `opus_demo` framing reader (`container/opus_demo.rs`, crate-private)
+  parses the official `testvectorNN.bit` vectors.
+- Conformance tests decode all 12 official RFC 8251 vectors and assert the
+  final range matches per packet. Vectors are committed under
+  `tests/fixtures/ietf/` for deterministic, offline CI; if absent the tests
+  skip rather than fail.
+
+### Added — M8 (codec-registry hookup)
+
+- `registerOpus()` now registers Opus with the `@kryxjs/codecs` plugin
+  registry via `registerCodec`, exposing encoder/decoder factories plus
+  metadata (media type, extensions, MIME types). Importing the package
+  auto-registers, so `createEncoder('opus')` / `createDecoder('opus')` work
+  through the framework.
+- Requires `@kryxjs/codecs` ≥ 0.2.0 (the release that introduced the plugin
+  registry and the unified `decode(EncodedPacket)` contract).
+
+### Fixed
+
+- Decode output buffer was sized for a 60 ms frame (2880 samples/channel at
+  48 kHz), but a single Opus packet can carry up to 120 ms (multi-frame
+  packets). Enlarged to 5760 samples/channel — surfaced by the RFC vectors,
+  which exercise multi-frame packets that the earlier fixtures did not.
+
+### Notes
+
+- Still pending before `0.1.0`: performance validation (M9) and the stable
+  release (M10).
 
 ---
 
@@ -235,7 +280,8 @@ libopus sources are vendored, but `encode()`/`decode()` are stubs.
 - `libopusVersion()` introspection (returns `"stub"` in alpha.0).
 - `nativeAddonVersion()` introspection.
 
-[Unreleased]: https://github.com/Brashkie/kryx-codecs-opus/compare/v0.1.0-beta.0...HEAD
+[Unreleased]: https://github.com/Brashkie/kryx-codecs-opus/compare/v0.1.0-beta.1...HEAD
+[0.1.0-beta.1]: https://github.com/Brashkie/kryx-codecs-opus/compare/v0.1.0-beta.0...v0.1.0-beta.1
 [0.1.0-beta.0]: https://github.com/Brashkie/kryx-codecs-opus/compare/v0.1.0-alpha.3...v0.1.0-beta.0
 [0.1.0-alpha.3]: https://github.com/Brashkie/kryx-codecs-opus/compare/v0.1.0-alpha.2...v0.1.0-alpha.3
 [0.1.0-alpha.2]: https://github.com/Brashkie/kryx-codecs-opus/compare/v0.1.0-alpha.1...v0.1.0-alpha.2

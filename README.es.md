@@ -20,12 +20,16 @@ Bindings a [libopus 1.5.2](https://opus-codec.org) vía Zig FFI
 
 ---
 
-## Estado: BETA (v0.1.0-beta.0)
+## Estado: BETA (v0.1.0-beta.1)
 
-**Codec completo.** `OpusEncoder` produce paquetes Opus reales a partir de PCM
-i16, y `OpusDecoder` decodifica Opus de vuelta a PCM — incluyendo archivos
-`.opus` reales generados por ffmpeg, opusenc y navegadores. Se espera qe la API
-pública se mantenga estable hasta el `0.1.0`.
+**Codec completo, conforme e integrado.** `OpusEncoder` produce paquetes Opus
+reales a partir de PCM i16, y `OpusDecoder` decodifica Opus de vuelta a PCM —
+incluyendo archivos `.opus` reales generados por ffmpeg, opusenc y navegadores.
+El decoder está verificado **bit-exacto** contra los vectores de prueba
+oficiales del RFC 8251, y Opus se registra con el plugin registry de
+`@kryxjs/codecs`, así qe `createEncoder('opus')` / `createDecoder('opus')`
+funcionan a través del framework. Se espera qe la API pública se mantenga
+estable hasta el `0.1.0`.
 
 | Milestone | Estado |
 |-----------|--------|
@@ -34,9 +38,9 @@ pública se mantenga estable hasta el `0.1.0`.
 | M3 — FFI completo + create/destroy | ✅ Hecho |
 | M4 — Encoder (encode) | ✅ Hecho |
 | M5 — Decoder (decode) | ✅ Hecho |
-| M6 — Roundtrip + interoperabilidad | ✅ Hecho (este release) |
-| M7 — Vectores de prueba IETF | ⏸ Pendiente |
-| M8 — Registración con codec registry | ⏸ Pendiente |
+| M6 — Roundtrip + interoperabilidad | ✅ Hecho |
+| M7 — Conformidad RFC 8251 (test vectors) | ✅ Hecho (este release) |
+| M8 — Registración con codec registry | ✅ Hecho (este release) |
 | M9 — Validación de performance | ⏸ Pendiente |
 | M10 — Release estable v0.1.0 | ⏸ Pendiente |
 
@@ -132,6 +136,26 @@ El número de muestras por canal debe corresponder a un frame legal de Opus —
 Estos valores escalan con la frecuencia de muestreo (a 24 kHz, 20 ms son 480
 muestras). Pasar un tamaño inválido lanza un `CodecError` con la lista de
 valores soportados.
+
+### Usar el registro de codecs (`@kryxjs/codecs`)
+
+Opus se registra solo con el plugin registry de `@kryxjs/codecs`, así qe podés
+construir encoders/decoders por nombre a través del framework en vez de
+importar las clases directamente:
+
+```ts
+import '@kryxjs/codecs-opus' // el import con efecto secundario registra 'opus'
+import { createEncoder, createDecoder, registry } from '@kryxjs/codecs'
+
+registry().has('opus') // → true
+
+const enc = createEncoder('opus', { sampleRate: 48000, channels: 2, bitrate: 128_000 })
+const dec = createDecoder('opus', { sampleRate: 48000, channels: 2 })
+```
+
+Esto es lo qe hace de Opus un codec "drop-in" en cualqier pipeline basado en
+`@kryxjs`: la misma llamada `createEncoder(name)` funciona para PCM, Opus, y
+cualqier paquete de codec futuro. Requiere `@kryxjs/codecs` ≥ 0.2.0.
 
 ### Leer archivos `.opus`
 
