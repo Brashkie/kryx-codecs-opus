@@ -20,16 +20,17 @@ Bindings a [libopus 1.5.2](https://opus-codec.org) vía Zig FFI
 
 ---
 
-## Estado: BETA (v0.1.0-beta.1)
+## Estado: ESTABLE (v0.1.0)
 
-**Codec completo, conforme e integrado.** `OpusEncoder` produce paquetes Opus
-reales a partir de PCM i16, y `OpusDecoder` decodifica Opus de vuelta a PCM —
-incluyendo archivos `.opus` reales generados por ffmpeg, opusenc y navegadores.
-El decoder está verificado **bit-exacto** contra los vectores de prueba
-oficiales del RFC 8251, y Opus se registra con el plugin registry de
-`@kryxjs/codecs`, así qe `createEncoder('opus')` / `createDecoder('opus')`
-funcionan a través del framework. Se espera qe la API pública se mantenga
-estable hasta el `0.1.0`.
+**Codec completo, conforme, integrado y con performance validada.**
+`OpusEncoder` produce paquetes Opus reales a partir de PCM i16, y `OpusDecoder`
+decodifica Opus de vuelta a PCM — incluyendo archivos `.opus` reales generados
+por ffmpeg, opusenc y navegadores. El decoder está verificado **bit-exacto**
+contra los vectores de prueba oficiales del RFC 8251, Opus se registra con el
+plugin registry de `@kryxjs/codecs` (así qe `createEncoder('opus')` /
+`createDecoder('opus')` funcionan a través del framework), y el rendimiento
+está medido y documentado. La API pública es estable y sigue versionado
+semántico desde `0.1.0` en adelante.
 
 | Milestone | Estado |
 |-----------|--------|
@@ -39,32 +40,25 @@ estable hasta el `0.1.0`.
 | M4 — Encoder (encode) | ✅ Hecho |
 | M5 — Decoder (decode) | ✅ Hecho |
 | M6 — Roundtrip + interoperabilidad | ✅ Hecho |
-| M7 — Conformidad RFC 8251 (test vectors) | ✅ Hecho (este release) |
-| M8 — Registración con codec registry | ✅ Hecho (este release) |
-| M9 — Validación de performance | ⏸ Pendiente |
-| M10 — Release estable v0.1.0 | ⏸ Pendiente |
+| M7 — Conformidad RFC 8251 (test vectors) | ✅ Hecho |
+| M8 — Registración con codec registry | ✅ Hecho |
+| M9 — Validación de performance | ✅ Hecho |
+| M10 — Release estable v0.1.0 | ✅ Hecho (este release) |
 
-Ver [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) para el roadmap completo.
+El roadmap de `0.1.0` está completo. Ver
+[docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) para el historial completo.
 
 ---
 
 ## Instalación
 
 ```bash
-npm install @kryxjs/codecs-opus@beta
+npm install @kryxjs/codecs-opus
 ```
 
 > El binario nativo correcto para tu plataforma se instala automáticamente
 > vía `optionalDependencies`. Plataformas soportadas: Windows x64/arm64,
 > macOS x64/arm64, Linux x64 (gnu/musl), Linux arm64 (gnu).
-
-### ¿Por qué `@beta`?
-
-El codec está completo y es interoperable, pero faltan algunos milestones antes
-del `0.1.0` estable (vectores de prueba oficiales, registro de codecs, trabajo
-de performance). La tag `@beta` te deja usar el codec terminado ahora, mientras
-`latest` queda reservado para el release estable. No se espera qe la API cambie
-antes del `0.1.0`.
 
 ---
 
@@ -183,6 +177,58 @@ interface OpusConfig {
   bitrate?: number                                    // default 64000
 }
 ```
+
+---
+
+## Rendimiento
+
+Dos capas de benchmark: el núcleo Rust (Criterion) y la superficie Node/N-API
+(un harness sin dependencias con `node:perf_hooks`). La diferencia entre ambas
+es el overhead qe agrega la frontera JavaScript ↔ nativo por llamada.
+
+**48 kHz estéreo, 128 kbps, frame de 20 ms (960 samples/canal):**
+
+| Operación | Núcleo (Rust) | Node (N-API) | Overhead | Throughput (Node) |
+|-----------|--------------:|-------------:|---------:|------------------:|
+| encode    | 169 µs        | 178 µs       | ~9 µs    | 5,379 ops/s       |
+| decode    | 53 µs         | 62 µs        | ~9 µs    | 15,630 ops/s      |
+| roundtrip | 222 µs        | 235 µs       | ~13 µs   | 4,084 ops/s       |
+
+El overhead de ~9 µs por llamada es constante (no crece con el tamaño del
+frame), lo qe confirma qe el camino Buffer ↔ i16 es zero-copy: la capa N-API
+agrega ~5% sobre libopus, no una copia proporcional. Codificar 20 ms de audio
+en ~178 µs significa qe la codificación en tiempo real usa menos del 1% de un
+núcleo.
+
+**Máquina de prueba:**
+
+| Componente | Valor |
+|------------|-------|
+| CPU | Intel Core i5-10400 @ 2.90 GHz (6 núcleos / 12 hilos) |
+| RAM | 16 GB |
+| SO | Windows 11 Pro |
+| Arquitectura | x64 |
+| Node.js | v22.18.0 |
+| Rust | 1.95.0 |
+| Zig | 0.14.1 |
+| Build de libopus | ReleaseFast |
+
+> Los benchmarks varían según el hardware. Estos resultados son una referencia
+> reproducible, no una garantía absoluta de rendimiento.
+
+**Reproducir:**
+
+```bash
+# Capa 1 — Núcleo Rust (Criterion). Reporte HTML en target/criterion/report/.
+npm run bench:rust
+
+# Capa 2 — Node / N-API. Compilá en release primero (un addon en debug enlaza
+# un libopus sin optimizar y corre ~15× más lento).
+npm run build
+npm run bench          # --json vía `npm run bench:json` para salida procesable
+```
+
+Ver [bench/README.md](bench/README.md) para más detalles.
 
 ---
 

@@ -20,15 +20,16 @@ Bindings to [libopus 1.5.2](https://opus-codec.org) via Zig FFI
 
 ---
 
-## Status: BETA (v0.1.0-beta.1)
+## Status: STABLE (v0.1.0)
 
-**Complete, conformant, integrated codec.** `OpusEncoder` produces real Opus
-packets from i16 PCM, and `OpusDecoder` decodes Opus back to PCM — including
-real `.opus` files produced by ffmpeg, opusenc, and browsers. The decoder is
-verified **bit-exact** against the official RFC 8251 test vectors, and Opus
-registers with the `@kryxjs/codecs` plugin registry so
-`createEncoder('opus')` / `createDecoder('opus')` work through the framework.
-The public API is expected to stay stable through to `0.1.0`.
+**Complete, conformant, integrated, performance-validated codec.**
+`OpusEncoder` produces real Opus packets from i16 PCM, and `OpusDecoder`
+decodes Opus back to PCM — including real `.opus` files produced by ffmpeg,
+opusenc, and browsers. The decoder is verified **bit-exact** against the
+official RFC 8251 test vectors, Opus registers with the `@kryxjs/codecs` plugin
+registry so `createEncoder('opus')` / `createDecoder('opus')` work through the
+framework, and performance is benchmarked and documented. The public API is
+stable and follows semantic versioning from `0.1.0` onward.
 
 | Milestone | Status |
 |-----------|--------|
@@ -38,31 +39,25 @@ The public API is expected to stay stable through to `0.1.0`.
 | M4 — Encoder (encode) | ✅ Done |
 | M5 — Decoder (decode) | ✅ Done |
 | M6 — Roundtrip + interoperability | ✅ Done |
-| M7 — RFC 8251 conformance (test vectors) | ✅ Done (this release) |
-| M8 — Codec registry hookup | ✅ Done (this release) |
-| M9 — Performance validation | ⏸ Pending |
-| M10 — Stable v0.1.0 | ⏸ Pending |
+| M7 — RFC 8251 conformance (test vectors) | ✅ Done |
+| M8 — Codec registry hookup | ✅ Done |
+| M9 — Performance validation | ✅ Done |
+| M10 — Stable v0.1.0 | ✅ Done (this release) |
 
-See [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) for the full roadmap.
+The `0.1.0` roadmap is complete. See
+[docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) for the full history.
 
 ---
 
 ## Install
 
 ```bash
-npm install @kryxjs/codecs-opus@beta
+npm install @kryxjs/codecs-opus
 ```
 
 > The right native binary for your platform is installed automatically via
 > `optionalDependencies`. Supported: Windows x64/arm64, macOS x64/arm64,
 > Linux x64 (gnu/musl), Linux arm64 (gnu).
-
-### Why `@beta`?
-
-The codec is complete and interoperable, but a few milestones remain before the
-stable `0.1.0` (official test vectors, registry hookup, performance work). The
-`@beta` tag lets you use the finished codec now while `latest` stays reserved
-for the stable release. The API is not expected to change before `0.1.0`.
 
 ---
 
@@ -179,6 +174,57 @@ interface OpusConfig {
   bitrate?: number                                    // default 64000
 }
 ```
+
+---
+
+## Performance
+
+Two benchmark layers: the Rust core (Criterion) and the Node/N-API surface
+(a dependency-free `node:perf_hooks` harness). The gap between them is the
+overhead the JavaScript ↔ native boundary adds per call.
+
+**48 kHz stereo, 128 kbps, 20 ms frame (960 samples/channel):**
+
+| Operation | Core (Rust) | Node (N-API) | Overhead | Throughput (Node) |
+|-----------|------------:|-------------:|---------:|------------------:|
+| encode    | 169 µs      | 178 µs       | ~9 µs    | 5,379 ops/s       |
+| decode    | 53 µs       | 62 µs        | ~9 µs    | 15,630 ops/s      |
+| roundtrip | 222 µs      | 235 µs       | ~13 µs   | 4,084 ops/s       |
+
+The ~9 µs per-call overhead is constant (it doesn't grow with frame size),
+confirming the Buffer ↔ i16 path is zero-copy: the N-API layer adds ~5% on top
+of libopus, not a proportional copy. Encoding 20 ms of audio in ~178 µs means
+real-time encoding uses under 1% of a core.
+
+**Test machine:**
+
+| Component | Value |
+|-----------|-------|
+| CPU | Intel Core i5-10400 @ 2.90 GHz (6 cores / 12 threads) |
+| RAM | 16 GB |
+| OS | Windows 11 Pro |
+| Architecture | x64 |
+| Node.js | v22.18.0 |
+| Rust | 1.95.0 |
+| Zig | 0.14.1 |
+| libopus build | ReleaseFast |
+
+> Benchmarks vary across hardware. These results are a reproducible reference,
+> not an absolute performance guarantee.
+
+**Reproduce:**
+
+```bash
+# Layer 1 — Rust core (Criterion). HTML report in target/criterion/report/.
+npm run bench:rust
+
+# Layer 2 — Node / N-API. Build in release first (a debug addon links an
+# unoptimized libopus and runs ~15× slower).
+npm run build
+npm run bench          # add --json via `npm run bench:json` for machine output
+```
+
+See [bench/README.md](bench/README.md) for details.
 
 ---
 

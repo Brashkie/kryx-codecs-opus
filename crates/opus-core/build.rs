@@ -50,13 +50,25 @@ fn main() {
     let zig_out = zig_dir.join("zig-out").join("lib");
     let (libopus_static, link_name) = expected_artifact(&zig_out);
 
+    // Optimize mode for libopus: ReleaseFast for `cargo build --release`,
+    // `cargo bench`, etc.; Debug otherwise. Computed once and used both to
+    // decide on a rebuild and to invoke Zig, so a cached Debug artifact is
+    // never silently reused by a release/bench build.
+    let optimize = if env::var("PROFILE").as_deref() == Ok("release") {
+        "ReleaseFast"
+    } else {
+        "Debug"
+    };
+
     // ─── 4. Invoke `zig build` if libopus.a is stale or missing ───────────
-    let needs_rebuild = should_rebuild(&libopus_static, &vendor_dir);
+    let needs_rebuild = should_rebuild(&libopus_static, &vendor_dir, optimize);
     if needs_rebuild {
         // Print to stderr as an informational line (not a cargo:warning,
         // which napi surfaces noisily). Only shown on the first build.
-        eprintln!("[opus-core] Building libopus with Zig (first build, ~1 min)...");
-        run_zig_build(&zig_dir);
+        eprintln!("[opus-core] Building libopus with Zig ({optimize}, first build, ~1 min)...");
+        run_zig_build(&zig_dir, optimize);
+        // Record the mode so a later build with a different mode rebuilds.
+        let _ = std::fs::write(libopus_static.with_extension("optimize"), optimize);
     }
     // When reusing the cache we stay silent to keep build output clean.
 
@@ -144,10 +156,21 @@ fn expected_artifact(zig_out_lib: &Path) -> (PathBuf, &'static str) {
     (zig_out_lib.join(filename), "opus")
 }
 
-fn should_rebuild(artifact: &Path, vendor: &Path) -> bool {
+fn should_rebuild(artifact: &Path, vendor: &Path, optimize: &str) -> bool {
     if !artifact.exists() {
         return true;
     }
+
+    // Rebuild if the optimize mode changed since the cached artifact was built.
+    // Without this, a libopus.a compiled in Debug by an earlier `cargo build`
+    // is reused by `cargo bench` (PROFILE=release) — silently benchmarking an
+    // unoptimized libopus, which runs the Opus DSP ~50-100x slower.
+    let mode_marker = artifact.with_extension("optimize");
+    match std::fs::read_to_string(&mode_marker) {
+        Ok(prev) if prev.trim() == optimize => {}
+        _ => return true,
+    }
+
     let artifact_mtime = match std::fs::metadata(artifact).and_then(|m| m.modified()) {
         Ok(t) => t,
         Err(_) => return true,
@@ -168,13 +191,7 @@ fn should_rebuild(artifact: &Path, vendor: &Path) -> bool {
     false
 }
 
-fn run_zig_build(zig_dir: &Path) {
-    let optimize = if env::var("PROFILE").as_deref() == Ok("release") {
-        "ReleaseFast"
-    } else {
-        "Debug"
-    };
-
+fn run_zig_build(zig_dir: &Path, optimize: &str) {
     let status = Command::new("zig")
         .arg("build")
         .arg(format!("-Doptimize={}", optimize))

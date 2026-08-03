@@ -54,6 +54,10 @@ coverage/
 # ─── Examples ──────────────────────────────────────────────────────────────
 examples/
 
+# ─── Benchmarks (dev-only; never shipped) ──────────────────────────────────
+bench/
+criterion/
+
 # ─── Documentation (only the top-level README ships) ───────────────────────
 docs/
 

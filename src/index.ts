@@ -4,7 +4,7 @@
  * Opus encoder/decoder for the Kryx ecosystem. Backed by libopus 1.5.2 via
  * a Zig FFI shim.
  *
- * ## Status (0.1.0-beta.0 — complete codec)
+ * ## Status (0.1.0 — stable)
  *
  * - ✅ M1: libopus 1.5.2 vendored (`vendor/libopus/`).
  * - ✅ M2: Zig compiles libopus, Rust links it, FFI verified.
@@ -13,7 +13,14 @@
  * - ✅ M5: real decode (Opus → PCM i16).
  * - ✅ M6: roundtrip validation + interoperability (decodes real .opus files
  *   produced by ffmpeg/opusenc via a built-in minimal Ogg reader).
- * - ⏸ M7: IETF/RFC official test vectors.
+ * - ✅ M7: RFC 8251 conformance — decoder is bit-exact with the reference
+ *   (all 12 official IETF test vectors pass via OPUS_GET_FINAL_RANGE).
+ * - ✅ M8: registers with the `@kryxjs/codecs` plugin registry, so
+ *   `createEncoder('opus')` / `createDecoder('opus')` work through the framework.
+ * - ✅ M9: performance benchmarked (Rust core + Node/N-API); ~9 µs N-API
+ *   overhead per call, zero-copy confirmed.
+ * - ✅ M10: stable release. The public API follows semantic versioning from
+ *   `0.1.0` onward.
  *
  * See docs/IMPLEMENTATION.md for the milestone roadmap.
  *
@@ -48,7 +55,7 @@ export { libopusVersion, nativeAddonVersion } from './native'
 export { registerOpus } from './register'
 
 /** Package version. */
-export const VERSION = '0.1.0-beta.1' as const
+export const VERSION = '0.1.0' as const
 
 // Side-effect: register on import.
 import './register'

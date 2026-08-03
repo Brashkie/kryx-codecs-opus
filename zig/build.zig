@@ -16,6 +16,15 @@ const std = @import("std");
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
+
+    // Optimization is driven by build.rs, which passes `-Doptimize=ReleaseFast`
+    // for release/bench builds and `-Doptimize=Debug` otherwise (respecting
+    // cargo's PROFILE). We deliberately do NOT set `preferred_optimize_mode`
+    // here: doing so switches Zig's CLI to the `--release=<mode>` form and
+    // removes the `-Doptimize=<mode>` flag build.rs relies on (see ziglang/zig
+    // #19732), which breaks the invocation. Plain `standardOptimizeOption`
+    // keeps `-Doptimize` available. Default when invoked bare is Debug — fine,
+    // because build.rs always passes the flag explicitly.
     const optimize = b.standardOptimizeOption(.{});
 
     const libopus_root = "../vendor/libopus";

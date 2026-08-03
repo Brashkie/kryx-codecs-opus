@@ -1,6 +1,6 @@
 {
   "name": "@kryxjs/codecs-opus",
-  "version": "0.1.0-beta.1",
+  "version": "0.1.0",
   "description": "Opus audio encoder/decoder for the Kryx multimedia ecosystem — bindings to libopus 1.5.2 via Zig FFI",
   "type": "commonjs",
   "main": "./dist/index.cjs",
@@ -40,6 +40,9 @@
     "test:watch": "cross-env VITE_CJS_IGNORE_WARNING=true vitest",
     "test:rust": "cross-env CARGO_INCREMENTAL=0 cargo test --workspace --exclude opus-node",
     "test:coverage": "cross-env VITE_CJS_IGNORE_WARNING=true vitest run --coverage",
+    "bench": "tsx bench/opus-bench.ts",
+    "bench:json": "tsx bench/opus-bench.ts --json",
+    "bench:rust": "cross-env CARGO_INCREMENTAL=0 cargo bench --workspace --exclude opus-node",
     "lint": "eslint \"src/**/*.ts\" \"__tests__/**/*.ts\"",
     "format": "prettier --write \"src/**/*.{ts,js}\" \"__tests__/**/*.ts\"",
     "format:rust": "cargo fmt --all",
@@ -88,8 +91,7 @@
     "node": ">= 18"
   },
   "publishConfig": {
-    "access": "public",
-    "tag": "beta"
+    "access": "public"
   },
   "napi": {
     "name": "kryx-codecs-opus",
@@ -108,13 +110,13 @@
     "@kryxjs/codecs": "^0.2.0"
   },
   "optionalDependencies": {
-    "@kryxjs/codecs-opus-win32-x64-msvc": "0.1.0-beta.1",
-    "@kryxjs/codecs-opus-win32-arm64-msvc": "0.1.0-beta.1",
-    "@kryxjs/codecs-opus-darwin-x64": "0.1.0-beta.1",
-    "@kryxjs/codecs-opus-darwin-arm64": "0.1.0-beta.1",
-    "@kryxjs/codecs-opus-linux-x64-gnu": "0.1.0-beta.1",
-    "@kryxjs/codecs-opus-linux-x64-musl": "0.1.0-beta.1",
-    "@kryxjs/codecs-opus-linux-arm64-gnu": "0.1.0-beta.1"
+    "@kryxjs/codecs-opus-win32-x64-msvc": "0.1.0",
+    "@kryxjs/codecs-opus-win32-arm64-msvc": "0.1.0",
+    "@kryxjs/codecs-opus-darwin-x64": "0.1.0",
+    "@kryxjs/codecs-opus-darwin-arm64": "0.1.0",
+    "@kryxjs/codecs-opus-linux-x64-gnu": "0.1.0",
+    "@kryxjs/codecs-opus-linux-x64-musl": "0.1.0",
+    "@kryxjs/codecs-opus-linux-arm64-gnu": "0.1.0"
   },
   "devDependencies": {
     "@napi-rs/cli": "2.18.4",

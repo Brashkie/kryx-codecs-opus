@@ -3,7 +3,7 @@ resolver = "2"
 members = ["crates/opus-core", "crates/opus-node"]
 
 [workspace.package]
-version = "0.1.0-beta.1"
+version = "0.1.0"
 edition = "2021"
 rust-version = "1.80"
 license = "Apache-2.0"
@@ -25,6 +25,9 @@ napi-build = "2"
 # C/FFI build
 cc = "1.0"
 bindgen = "0.69"
+
+# Benchmarking (dev-only; never shipped to npm consumers)
+criterion = { version = "0.5", features = ["html_reports"] }
 
 [profile.release]
 opt-level = 3

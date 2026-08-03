@@ -17,9 +17,27 @@ path = "src/lib.rs"
 thiserror = { workspace = true }
 tracing = { workspace = true }
 
+[dev-dependencies]
+# Benchmarking core encode/decode. Dev-only — not part of the published crate.
+criterion = { workspace = true }
+
 [build-dependencies]
 # M2: no bindgen yet — sys.rs is hand-written for the minimal surface.
 # bindgen will be added in M3 when we auto-generate from zig/include/opus_shim.h.
 
 [features]
 default = []
+
+# ── Benchmarks (M9) ──────────────────────────────────────────────────────────
+# harness = false → use Criterion's runner instead of libtest's.
+[[bench]]
+name = "encode"
+harness = false
+
+[[bench]]
+name = "decode"
+harness = false
+
+[[bench]]
+name = "roundtrip"
+harness = false

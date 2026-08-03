@@ -9,7 +9,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-In progress: see [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) for M9–M10.
+Nothing yet. The `0.1.0` roadmap (M1–M10) is complete.
+
+---
+
+## [0.1.0] — 2026-08-03
+
+**First stable release.** The alpha → beta → stable roadmap (M1–M10) is
+complete. The public API is stable and follows semantic versioning from here:
+no breaking changes without a major version bump.
+
+This release consolidates everything built through the beta series — a
+complete, RFC 8251 bit-exact, registry-integrated, performance-validated Opus
+codec — and promotes it to `latest` on npm (no more `@beta` tag).
+
+Install:
+
+```bash
+npm install @kryxjs/codecs-opus
+```
+
+### Added — M9 (performance validation)
+
+- Two benchmark layers. Criterion for the Rust core
+  (`crates/opus-core/benches/{encode,decode,roundtrip}.rs`) and a
+  dependency-free `node:perf_hooks` harness for the Node/N-API surface
+  (`bench/runner.ts` + `bench/opus-bench.ts`, run via `tsx`). The runner is
+  generic — it knows nothing about Opus — so it can seed a future
+  `@kryxjs/bench`.
+- Measured N-API overhead is a constant ~9 µs per call (encode 169→178 µs,
+  decode 53→62 µs, roundtrip 222→235 µs on the reference machine),
+  confirming the `Buffer` ↔ `i16` path is zero-copy. Results, test-machine
+  specs, and reproduction steps are documented in the README's Performance
+  section.
+- `npm run bench` / `bench:json` / `bench:rust` scripts.
+
+### Added — M10 (stable release)
+
+- Version promoted to `0.1.0`; the `@beta` dist-tag is dropped so installs
+  default to the stable release on `latest`.
+- API declared stable: semantic versioning applies from `0.1.0` onward.
+
+### Fixed
+
+- `build.rs` now records the libopus optimize mode in a marker file and
+  rebuilds when it changes, so a release/bench build never silently reuses a
+  Debug-compiled `libopus.a` (which ran the Opus DSP ~50–100× slower). Note:
+  `preferred_optimize_mode` must NOT be set in `build.zig` — it switches Zig's
+  CLI away from the `-Doptimize` flag that `build.rs` passes (ziglang/zig#19732).
 
 ---
 
@@ -280,7 +327,8 @@ libopus sources are vendored, but `encode()`/`decode()` are stubs.
 - `libopusVersion()` introspection (returns `"stub"` in alpha.0).
 - `nativeAddonVersion()` introspection.
 
-[Unreleased]: https://github.com/Brashkie/kryx-codecs-opus/compare/v0.1.0-beta.1...HEAD
+[Unreleased]: https://github.com/Brashkie/kryx-codecs-opus/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/Brashkie/kryx-codecs-opus/compare/v0.1.0-beta.1...v0.1.0
 [0.1.0-beta.1]: https://github.com/Brashkie/kryx-codecs-opus/compare/v0.1.0-beta.0...v0.1.0-beta.1
 [0.1.0-beta.0]: https://github.com/Brashkie/kryx-codecs-opus/compare/v0.1.0-alpha.3...v0.1.0-beta.0
 [0.1.0-alpha.3]: https://github.com/Brashkie/kryx-codecs-opus/compare/v0.1.0-alpha.2...v0.1.0-alpha.3
