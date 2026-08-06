@@ -5,7 +5,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { registerOpus } from '../src/register'
-import { registerCodec, findPlugin, createEncoder, createDecoder } from '@kryxjs/codecs'
+import { findPlugin, createEncoder, createDecoder } from '@kryxjs/codecs'
 
 describe('registerOpus', () => {
   it('registers the opus plugin with the expected descriptor', () => {

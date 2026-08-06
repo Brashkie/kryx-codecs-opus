@@ -55,7 +55,7 @@ export { libopusVersion, nativeAddonVersion } from './native'
 export { registerOpus } from './register'
 
 /** Package version. */
-export const VERSION = '0.1.0' as const
+export const VERSION = '0.1.1' as const
 
 // Side-effect: register on import.
 import './register'
